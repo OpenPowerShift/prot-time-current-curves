@@ -122,6 +122,15 @@ export const RENAMED_WITH_REASON: Readonly<Record<string, { to: string; why: str
  * nothing like the office standard its author thought they had set, and
  * nothing anywhere said why.
  */
+/**
+ * Keys `page` takes directly, as `key = value;`. Everything else in a
+ * page is one of the sub-blocks in `PAGE_SUB_FIELDS`.
+ */
+export const PAGE_TOP_KEYS: readonly string[] = [
+  'size', 'orientation', 'border', 'stretch', 'theme', 'watermark',
+  'title', 'footer', 'margins_mm',
+];
+
 export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
   legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'currents', 'notes',
     'comment'],
@@ -2811,6 +2820,7 @@ if (kwName === 'flex_points') {
             p.size = this.parseSizeMm();
             continue;
           }
+          this.notePageKey(k, /* asBlock */ true);
           const fields = this.parsePageSubBlock(k.image);
           this.eat('SEMI');
           applyPageSubBlock(p, k.image, fields);
@@ -2937,14 +2947,42 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            // Other page members (scale, legend, axes, curves,
-            // points, leaders) are read into a placeholder.
+            this.notePageKey(k, /* asBlock */ false);
             this.parseScalarValue();
             this.eat('SEMI');
         }
       }
       return p;
     }, '}');
+  }
+
+  /**
+   * A `page` key that is not one of its own.
+   *
+   * These were read and dropped without a word, so `page { nudge_px = 0; }`
+   * looked like it worked and did nothing -- the setting lives in
+   * `page { curves { nudge_px } }`. Where the word belongs to one of the
+   * page's sub-blocks the message says which, because that is the
+   * mistake: the right key in the wrong place.
+   */
+  private notePageKey(k: Token, asBlock: boolean): void {
+    if (asBlock ? PAGE_SUB_FIELDS[k.image] : PAGE_TOP_KEYS.includes(k.image)) return;
+    const home = Object.entries(PAGE_SUB_FIELDS)
+      .filter(([, fields]) => fields.includes(k.image))
+      .map(([block]) => block);
+    if (!asBlock && home.length > 0) {
+      this.errors.push({
+        message: `the page does not accept "${k.image}" directly; it belongs in `
+          + home.map((b) => `${b} { ${k.image} }`).join(' or '),
+        line: k.line, column: k.col, offset: k.start, length: k.end - k.start,
+        severity: 'warning', code: 'UNKNOWN_KEY',
+      });
+      return;
+    }
+    this.noteUnknownKey('the page', k, [
+      ...PAGE_TOP_KEYS,
+      ...Object.keys(PAGE_SUB_FIELDS).filter((b) => !PAGE_TOP_KEYS.includes(b)).map((b) => `${b} { }`),
+    ]);
   }
 
   /**

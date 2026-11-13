@@ -1525,6 +1525,15 @@ viewBox is computed from `size`, `orientation`, and `margins_mm`,
 for PNG it determines the canvas dimensions, and for PDF the
 physical page size matches `size`.
 
+A `page` takes a fixed set of keys directly (`size`, `orientation`,
+`border`, `stretch`, `theme`, `watermark`, `title`, `footer`,
+`margins_mm`); every other setting belongs to one of its sub-blocks.
+Any other key is reported (`UNKNOWN_KEY`), and where the word belongs
+to a sub-block the message names it: `page { nudge_px = 0; }` is
+told it belongs in `curves { nudge_px }`. A setting a `view` also
+takes (`nudge_px`) is resolved view first, then the page sub-block,
+then the default.
+
 [source,tc]
 ----
 page {
