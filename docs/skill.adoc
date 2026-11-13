@@ -34,12 +34,16 @@ and computes the grading margins between them.
 
 [source,bash]
 ----
-tc-curves check  study.ptc          # diagnostics + margins
+tc-curves check  study.ptc          # every finding, and each failing grade
+tc-curves report study.ptc          # the margins, pair by pair
 tc-curves render study.ptc --pdf    # the sheet
 ----
 
 Exit status: `0` clean, `1` a study error, `2` usage or I/O, `3` a
 valid study whose *grading fails* -- which is a real answer, not a bug.
+Exit `0` is not "coordinates": read every warning `check` prints. A
+grade with no `margin` has no verdict (`GRADE_NOT_EVALUATED`), and one
+where nothing operates at the fault is not a pass.
 
 == The smallest study that says something
 
@@ -103,7 +107,9 @@ document is an answer to a specific question the report raised.
 | `faults` | The currents grading is judged at. Without one there is
              nothing to compute a margin from.
 | `relay`  | A physical device. Its `element`s are its settings.
-| `grade`  | The question: does this pair coordinate? One per pair.
+| `grade`  | The question: does this pair coordinate? One per pair, with
+             a `margin` (or one in `meta`) -- without it there is no verdict.
+             A study with a single relay has nothing to grade, and that is fine.
 | `view`   | One sheet. Left bare, it fits itself to what is drawn.
 |===
 
@@ -122,7 +128,10 @@ them.
 | Setting in secondary A | `I_pickup = 6 A_sec;` | Needs `ct_ratio`.
 | TMS / TD / time dial | `tms = 0.10;` | Never guess this.
 | IEC standard inverse | `curve = iec.si;` | See the curve table below.
-| Definite time, 0.1 s | `curve = definite; t_delay = 100 ms;` | No `tms`.
+| Definite time, 0.1 s | `curve = definite; t_delay = 100 ms;` | No `tms`. Always write the `curve`.
+| Min. time of the curve | `t_floor = 100 ms;` | On an inverse stage. Never `t_delay` there.
+| Added delay on an IDMT stage | -- | Not supported. Say so in your summary.
+| Relay sees 50 % of the fault | `share = 50 %;` | Every percentage takes `%`.
 | 50 / high-set / I>> | a second `element`, or a `stage` | Below.
 | 51N / 51G / earth | `function = earth_fault;` | Measures residual `3I0`.
 | 46 / negative sequence | `function = neg_seq; measures = I2;` | State the scaling.
@@ -161,7 +170,8 @@ element 51 {
 
 == The decision ladder
 
-Work down it. Stop at the first row that does not apply to your report.
+The rows are independent: add every row that applies to your report,
+and nothing for the rows that do not.
 
 [cols="1,3,2", options="header"]
 |===
@@ -173,7 +183,7 @@ Work down it. Stop at the first row that does not apply to your report.
 | 4 | spans a transformer | a second voltage, a `transformer` with its vector group, <<levels>>
 | 5 | gives a fault *range*, not one figure | `I_min` / `I_max`, <<ranges>>
 | 6 | gives negative-sequence settings | `measures = I2` or `3I2`, <<sequence>>
-| 7 | states a required clearance time | a `times` block, <<times>>
+| 7 | states a required clearance time, or a rating | `times` / `currents`, <<times>>
 | 8 | includes a fuse or cable damage curve | a `device`, <<devices>>
 | 9 | is several chains, or needs several sheets | `group` and `view`, <<sheets>>
 | 10 | needs a mark or margin figure | `point` / `annotate`, <<marks>>
@@ -298,7 +308,10 @@ for the conversion. That refusal is the tool working.
 
 Setting reports usually give minimum and maximum fault levels. Give
 both, and the margin is checked across the range rather than at one
-convenient current.
+convenient current. `I` is always required -- it is the current the
+grade is judged at; the range is stated *around* it. Where the report
+gives only a range, use the figure the report grades at, usually the
+maximum, and say so in your summary.
 
 [source,tc]
 ----
@@ -317,6 +330,22 @@ The upstream sweep is on by default: a pair that grades at the declared
 fault is also checked above it, because characteristics converge as the
 multiple rises. If it reports a failure above your fault, that is a
 real finding.
+
+An earth fault states its residual as well as its phase current, and
+its `type` (one of `three_phase`, `two_phase`, `two_phase_earth`,
+`single_phase_earth`):
+
+[source,tc]
+----
+faults {
+    F_EARTH { type = single_phase_earth; voltage = MV; I = 1.2 kA; residual = 1.2 kA; }
+}
+----
+
+The upstream sweep's ceiling is the largest fault at the primary's level
+-- phase faults included -- so on an earth sheet give
+`upstream_to = <the earth-fault maximum>;` on the grade, or the sweep
+judges earth relays at a phase-fault current.
 
 [#sequence]
 == 6. Negative sequence
@@ -369,7 +398,22 @@ times {
 
 `at_I` says where along the rule to write its caption -- beside the
 curve the requirement bites on. It does not restrict which sheets the
-rule applies to; `views` does that.
+rule applies to; `views` does that. Requirements at the same time share
+one rule and one caption.
+
+An equipment rating or a load limit is the vertical counterpart -- a
+current, not a time -- and goes in `currents`. `at_t` places its caption:
+
+[source,tc]
+----
+currents {
+    CABLE { name = "Cable rating"; I = 600 A; voltage = MV; at_t = 8 s; views = [F1_PHASE]; }
+}
+----
+
+Style each kind of rule in its own page block, with the same keys:
+`page { faults { ... } times { ... } currents { ... } }`, each taking
+`style`, `color`, `width_px`, `labels`, `values`.
 
 [#devices]
 == 8. Fuses, cables and damage curves
@@ -391,7 +435,12 @@ device F_100T {
 A fuse grades on total-clear time as the primary and on minimum-melt as
 the backup, automatically. It can be named in a `grade` like any relay.
 
-A device takes `views` and `group` membership like an element.
+A device takes `name` and `views` like a relay element, and joins a
+chain by being listed in the group: `group AUX { members = [R_AUX, F_11A]; }`.
+A fuse the report gives only a rating for has no curve to draw: say it is
+missing rather than inventing one (its rating can go in `currents`).
+If the fault current is past the table's last point, the tool holds the
+last time and warns (`DEVICE_BEYOND_TABLE`) -- a finding to report.
 
 [#sheets]
 == 9. Several chains, several sheets
@@ -411,7 +460,43 @@ view F2_PHASE { group = FEEDER_2; quantity = phase; title = "Feeder 2"; }
 A relay in both chains is drawn on both sheets -- an incomer backs up
 everything, so it belongs to every chain it is on.
 
-Items name their sheets with `views`; a view never lists or contains them.
+*Scoping runs one way.* Every drawn item -- element, device, fault,
+`times` entry, `currents` entry, point, annotation -- names its sheets
+with `view = X` or `views = [X, Y]`; with neither it is on every sheet.
+A view never lists or contains its items: `view { currents = [...] }`
+and a `times { }` written inside a view are both errors.
+
+Everything about a sheet's axes is on its view, not the page:
+
+[source,tc]
+----
+view F1_PHASE {
+    group = FEEDER_1; quantity = phase; voltage = MV;
+    current_min = 50 A; current_max = 30 kA;   # omit to fit automatically
+    time_min = 10 ms;   time_max = 10 s;
+    tick_density = "normal";                  # sparse | normal | dense
+}
+----
+
+[#placing]
+=== Placing a relay between two others
+
+When the report asks for the margin spread between a downstream and an
+upstream relay, `grade` has a second shape. It solves the middle relay's
+`tms` so its time at the fault sits `spacing` of the way from `below`
+(faster) to `above` (slower), and checks both gaps against `margin`:
+
+[source,tc]
+----
+grade {
+    below = R_RMU:51; middle = R_FDR:51; above = R_INCOMER:51;
+    fault = F_RMU_MIN; spacing = 50 %; margin = 0.30 s;
+}
+----
+
+Use `primary` / `backup` or `below` / `middle` / `above`, never both in
+one block. Only use this when the report asks for a setting to be
+chosen; otherwise grade the pairs as the report set them.
 
 [#marks]
 == 10. Marking the sheet: points and annotations
@@ -526,10 +611,24 @@ what they mean when they appear.
                                  they disagree; the residual is three
                                  times `I0`. Copy whichever the report
                                  gives and delete the other.
+| `FAULT_CURRENT_INVALID` | Usually a fault with no `I`: a range and
+                            components are given as well as `I`, not instead.
+| `GRADE_NOT_EVALUATED` | The grade has no `margin`, so no verdict.
+| `NO_OPERATION` / `SPACING_UNRESOLVED` | A relay does not pick up at the
+                            fault given -- often a pickup above it.
 | `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
                                 across a transformer whose windings do
                                 not settle how. Declare the
                                 `vector_group`, or use a `scenario`.
+| `RENAMED_KEY`, `REMOVED_KEY` | An older form of the language. Run
+                                 `tc-curves migrate study.ptc`; what it
+                                 cannot rewrite, the message explains.
+| `UNIT_MISSING` | A bare number. Every quantity states its unit, a
+                   percentage included (`share = 50 %`).
+| `VIEW_LISTS_ITEMS` | A view listing its items. Put `views = [..]` on
+                       each item instead.
+| `DELAY_ON_INVERSE` | `t_delay` on an inverse stage. Use `t_floor` for a
+                       minimum time; an adder is not supported.
 |===
 
 A study that grades *fail* is not a broken study. It is the answer.
@@ -539,12 +638,19 @@ do not adjust settings to make it pass unless you were asked to.
 == Checklist before you hand it over
 
 . `tc-curves check study.ptc` exits `0`, or `3` with a grading failure
-  you have reported in words.
+  you have reported in words -- and every warning it printed is either
+  fixed or reported.
+. `tc-curves report study.ptc` gives each grade a verdict, not
+  "not evaluated".
 . Every number in the study appears in the source report. Nothing was
   inferred to fill a gap.
-. Every relay has `voltage` and `ct_ratio`.
+. Every relay has `voltage`, and `ct_ratio` where the report gives it
+  (it is required for settings in secondary amps; otherwise list it as
+  missing rather than invent it).
 . Every transformer the study grades across has its `vector_group`.
 . Every element states `curve` and either `tms` or `t_delay`.
+. Every number carries its unit: `A`, `kA`, `ms`, `s`, `kV`, `%`.
+. Every item that belongs to some sheets only says so with `views`.
 . Sequence and earth elements state what they measure.
 . Each `grade` names a fault that exists at the primary's own voltage.
 . Anything the report did not give is *named in your summary* as

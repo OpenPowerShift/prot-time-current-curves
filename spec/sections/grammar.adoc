@@ -355,8 +355,15 @@ stage-member    ::= curve-asg
 [source,ebnf]
 ----
 grade-block     ::= "grade" "{" { grade-member } "}" ;
+(* Two shapes: primary/backup grades a pair; below/middle/above with
+   spacing places the middle curve that fraction of the way, in seconds
+   at the fault, from below to above. Never mixed. *)
 grade-member    ::= "primary"   "=" ref ";"
                   | "backup"    "=" ref ";"
+                  | "below"     "=" ref ";"
+                  | "middle"    "=" ref ";"
+                  | "above"     "=" ref ";"
+                  | "spacing"   "=" number "%" ";"
                   | "fault"     "=" fault-ref ";"
                   | "margin" "=" number time-unit ";"
                   | "margin_target" "=" number time-unit ";"

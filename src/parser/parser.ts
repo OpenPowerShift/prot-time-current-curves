@@ -248,7 +248,7 @@ export const KEYWORDS = new Set([
   'definite', 'formula', 'flex_points', 'curve', 't_r',
   // attribute keys
   'function', 'tms', 't_delay', 'I_units',
-  'tolerance', 'upstream', 'upstream_to',
+  'tolerance', 'upstream', 'upstream_to', 'below', 'middle', 'above', 'spacing',
   /* Units-everywhere names. No key carries its own unit. */
   'I', 'I_min', 'I_max', 'residual', 't', 'V',
   /*
@@ -1029,8 +1029,7 @@ class Parser {
         case 'I0':    p.I0_A = this.parseNumberWithUnit_A('I0'); break;
         case 'residual': p.earth_A = this.parseNumberWithUnit_A('residual'); break;
         case 'type': {
-          const kw = this.matchKeyword(
-            'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+          const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
           if (kw) p.faultType = kw as import('./ast.js').FaultTypeKeyword;
           break;
         }
@@ -1467,7 +1466,10 @@ class Parser {
           this.expect('EQUALS', '=');
           switch (k.image) {
             /* Fault currents carry an `A` / `kA` suffix; fold it in. */
-            case 'type':     f.type = this.parseQuantityValue() as
+            /* A word from a closed set: a misspelt type is refused, since
+             * it decides how every component of the fault is derived. */
+            case 'type':     f.type = (this.keywordFrom('type', 'three_phase', 'two_phase',
+                               'two_phase_earth', 'single_phase_earth') ?? undefined) as
                                import('./ast.js').FaultTypeKeyword | undefined; break;
             case 'I':      f.I_A = this.parseNumberWithUnit_A('I'); break;
             case 'I_min':    f.min_A = this.parseNumberWithUnit_A('I_min'); break;
@@ -1577,8 +1579,7 @@ class Parser {
             case 'at_3I0':
               t.at_earth_A = this.parseNumberWithUnit_A(k.image); break;
             case 'type': {
-              const kw = this.matchKeyword(
-                'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+              const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
               if (kw) t.faultType = kw as import('./ast.js').FaultTypeKeyword;
               break;
             }
@@ -1651,8 +1652,7 @@ class Parser {
             case 'at_t': c.at_t_s = this.parseNumberWithUnit_s('at_t'); break;
             case 'voltage': c.voltage = this.parseStringOrIdent(); break;
             case 'type': {
-              const kw = this.matchKeyword(
-                'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+              const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
               if (kw) c.faultType = kw as import('./ast.js').FaultTypeKeyword;
               break;
             }
@@ -1706,9 +1706,43 @@ class Parser {
       return null;
     }
     this.expect('LBRACE', '{');
+    const bodyStart = this.pos;
     const el = this.parseElementBody(idTok.image, head);
+    this.noteLegacyDefinite(bodyStart, this.pos);
     this.expect('RBRACE', '}');
     return el;
+  }
+
+  /**
+   * A body with `t_delay` and no curve at all: the old way of writing a
+   * definite-time stage, which left the reader to infer the curve from
+   * the presence of a delay. Now `curve = definite;` says it, so there
+   * is one way to write one; the fix inserts it in front of the delay,
+   * which is exactly what the old form meant. An element with `stages`
+   * is not one of these: its `t_delay` is inherited by its stages.
+   */
+  private noteLegacyDefinite(from: number, to: number): void {
+    const keys = new Set<string>();
+    let delay: Token | undefined;
+    let depth = 0;
+    for (let i = from; i < to; i++) {
+      const t = this.tokens[i];
+      if (t.kind === 'LBRACE' || t.kind === 'LBRACK') depth++;
+      else if (t.kind === 'RBRACE' || t.kind === 'RBRACK') depth--;
+      else if (depth === 0 && (t.kind === 'KW' || t.kind === 'IDENT')
+        && (this.tokens[i + 1]?.kind === 'EQUALS' || t.image === 'stages')) {
+        keys.add(t.image);
+        if (t.image === 't_delay') delay = t;
+      }
+    }
+    if (!delay || ['curve', 'formula', 'flex_points', 'stages'].some((k) => keys.has(k))) return;
+    this.errors.push({
+      message: 'a delay with no curve was the old way to write a definite-time stage; '
+        + 'write curve = definite; beside the t_delay',
+      line: delay.line, column: delay.col, offset: delay.start, length: delay.image.length,
+      severity: 'error', code: 'REMOVED_KEY',
+      fix: [{ offset: delay.start, length: 0, text: 'curve = definite; ' }],
+    });
   }
 
   private parseElementBody(id: string, head: Token): ElementBlock {
@@ -1728,7 +1762,9 @@ class Parser {
           const stIdTok = this.parseDeviceNumberId();
           if (!stIdTok) continue;
           this.expect('LBRACE', '{');
+          const stStart = this.pos;
           const stBody = this.parseStageBody(stIdTok.image, stIdTok);
+          this.noteLegacyDefinite(stStart, this.pos);
           stages.push(stBody);
           this.expect('RBRACE', '}');
         }
@@ -2166,7 +2202,7 @@ if (kwName === 'flex_points') {
             if (names.length > 0) d.views = [...(d.views ?? []), ...names];
           }
           break;
-        case 'voltage':
+        case 'voltage': case 'name':
         case 'maker': case 'model': case 'description': case 'comment': case 'reference':
           {
             /*
@@ -2177,6 +2213,7 @@ if (kwName === 'flex_points') {
             const v = this.parseStringOrIdent();
             this.eat('SEMI');
             if (k.image === 'voltage') d.voltage = v;
+            if (k.image === 'name') d.name = v;
             if (k.image === 'maker') d.maker = v;
             if (k.image === 'model') d.model = v;
             if (k.image === 'description') d.description = v;
@@ -2185,7 +2222,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views', 'comment', 'description', 'reference']);
+          this.noteUnknownKey('a device', k, ['name', 'kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views', 'comment', 'description', 'reference']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -2223,6 +2260,38 @@ if (kwName === 'flex_points') {
               this.eat('SEMI');
               if (k.image === 'primary') g.primary = r;
               else g.backup = r;
+            }
+            break;
+          case 'below':
+          case 'middle':
+          case 'above':
+            {
+              const r = this.parseRef();
+              this.eat('SEMI');
+              g[k.image] = r;
+            }
+            break;
+          case 'spacing':
+            {
+              /*
+               * A fraction of the gap, never a time: a time difference
+               * between two curves is what `margin` already says, and a
+               * second key for it would be a second way to say it.
+               */
+              const unit = this.peekAt(1);
+              if (this.at('NUMBER') && (unit.kind === 'IDENT' || unit.kind === 'KW')
+                  && ['s', 'ms', 'min', 'ks'].includes(unit.image)) {
+                this.errors.push({
+                  message: 'spacing is a percentage of the gap between below and above '
+                    + '(spacing = 50 %); a time difference is margin',
+                  line: unit.line, column: unit.col, offset: unit.start, length: unit.image.length,
+                  severity: 'error', code: 'UNIT_WRONG_QUANTITY',
+                });
+                this.pos += 2;
+              } else {
+                g.spacing_pct = this.parsePercent('spacing');
+              }
+              this.eat('SEMI');
             }
             break;
           case 'scenario':
@@ -2314,7 +2383,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance', 'upstream', 'upstream_to', 'solve', 'comment']);
+            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'below', 'middle', 'above', 'spacing', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance', 'upstream', 'upstream_to', 'solve', 'comment']);
             this.parseScalarValue();
             this.eat('SEMI');
         }
@@ -2404,8 +2473,7 @@ if (kwName === 'flex_points') {
           case 'at_3I0':
             a.at_earth_A = this.parseNumberWithUnit_A(k.image); this.eat('SEMI'); break;
           case 'type': {
-            const kw = this.matchKeyword(
-              'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+            const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
             this.eat('SEMI');
             if (kw) a.faultType = kw as import('./ast.js').FaultTypeKeyword;
             break;

@@ -500,6 +500,25 @@ flag (informational) -- the engineer is *not* asking the tool to
 make it happen, only to report the gap. With `solve`, the tool
 adjusts free variables to hit the target.
 
+==== Placing the middle of three
+
+`grade` has a second shape. `below`, `middle` and `above` name three
+curves, and `spacing` (a percentage) says where the middle one sits:
+at the declared condition,
+
+----
+t_middle = t_below + spacing / 100 * (t_above - t_below)
+----
+
+with the middle's free setting (`solve { free }`, default `tms`)
+solved to meet it. `below` and `above` mean faster and slower in time
+at that condition -- as drawn -- not lower and higher current, nor
+position in the network. The block is graded as two pairs, below /
+middle and middle / above, each checked against `margin` and reported
+as an ordinary pair is; the lower pair's report states the spacing
+asked for and where the curve was placed. Keys of the two shapes may not
+be mixed (`GRADE_SHAPE`), and `spacing` must lie in 0 % to 100 %.
+
 A `grade` block may declare either, both, or neither. The semantics
 of each combination:
 
@@ -1395,11 +1414,10 @@ takes a particular shape.
 
 ==== Stage idempotency
 
-A stage with only a pickup and no curve is interpreted as a *purely
-definite-time* stage -- the curve degenerates to `t = 0` for
-`I >= I_pu` and `t = +inf` for `I < I_pu`. The stage must carry
-either an explicit `curve = definite` (prescribed) or `t_delay`
-(legacy), or the validator *errors out* (see
+A definite-time stage says so: `curve = definite` with its `t_delay`.
+A stage with a `t_delay` and no curve was the old spelling of the same
+thing; it is `REMOVED_KEY`, and the fix inserts `curve = definite;`.
+A stage with neither a curve nor a delay is an error (see
 <<validation,Validation>>).
 
 ==== Stage ordering and shading

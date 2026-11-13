@@ -33,6 +33,7 @@ import parallelFeeders from '../examples/15-parallel-feeders.ptc?raw';
 import drawingStyle from '../examples/16-drawing-style.ptc?raw';
 import sequenceSheets from '../examples/17-sequence-sheets.ptc?raw';
 import bessTwoChains from '../examples/18-bess-two-chains.ptc?raw';
+import evenSpacing from '../examples/19-even-spacing.ptc?raw';
 
 export interface Example {
   /** Stable key, also the value in the picker. */
@@ -62,6 +63,7 @@ const ALL: ReadonlyArray<Example> = [
   { id: 'sheets', name: 'Gallery 5 — Sequence sheets (phase, I2, 3I2, 3I0)', source: sequenceSheets },
   { id: 'twochains', name: 'Advanced — Kestrel Rise BESS (two chains, four sheets)', source: bessTwoChains },
   { id: 'tour', name: 'Capability tour (every block)', source: capabilityTour },
+  { id: 'spacing', name: 'Placing a curve between two others (spacing)', source: evenSpacing },
 ];
 
 /**

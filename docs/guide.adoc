@@ -159,8 +159,8 @@ Every field takes the unit from you, and checks it:
 ----
 system { voltages { "HV" { V = 33 kV; } } }
 faults  { "Bus max" { I = 6.4 kA; voltage = "HV"; } }
-relay R { element 51 { I_pickup = 480 A; tms = 0.3; t_delay = 60 ms; } }
-grade   { primary = R:51; backup = R_INC:51; margin = 0.3 s; }
+relay R { element 50 { curve = definite; I_pickup = 4.8 kA; t_delay = 60 ms; } }
+grade   { primary = R:50; backup = R_INC:51; margin = 0.3 s; }
 ----
 
 `I` is phase current, `I1` / `I2` / `I0` the components, `residual`
@@ -791,7 +791,7 @@ grade {
     fault         = "F_lv_max";    # or scenario = "..."
     margin        = 0.30 s;          # constraint: minimum acceptable
     margin_target = 0.35 s;          # target: exact design margin
-    tolerance = 5 %;
+    tolerance     = 5 %;           # accepted overshoot above the target
     upstream      = true;          # also sweep above the declared fault
     upstream_to   = 20 kA;         # ceiling for that sweep
     comment       = "feeder against incomer";
@@ -807,6 +807,22 @@ fault can still fail further up, where two characteristics converge.
 Its ceiling is the largest fault at the primary's own level; a pair
 that cannot reach it -- a spur fuse -- wants `upstream_to` or
 `upstream = false`.
+
+==== Placing a curve between two others
+
+`grade` has a second shape: `below` / `middle` / `above` places the
+middle curve `spacing` of the way, in seconds at the fault, from the
+faster curve to the slower, and solves its `tms` to put it there.
+`below` and `above` mean faster and slower *as drawn*. Both gaps are
+still checked against `margin`. Use one shape or the other, never both.
+
+[source,tc]
+----
+grade {
+    below = R_RMU:51; middle = R_FDR:51; above = R_INC:51;
+    fault = "F_lv_min"; spacing = 50 %;   # 50 % spreads it evenly
+}
+----
 
 ==== Letting the tool choose a setting
 

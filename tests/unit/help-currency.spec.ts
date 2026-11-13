@@ -66,7 +66,7 @@ describe('the unit suffixes offered after a number', () => {
     const witness: Record<string, string> = {
       __current: 'faults { "F" { I = 1 <U>; } }',
       __pickup: 'relay R { element 51 { I_pickup = 1 <U>; } }',
-      __time: 'relay R { element 51 { t_delay = 1 <U>; } }',
+      __time: 'relay R { element 51 { curve = definite; t_delay = 1 <U>; } }',
       __voltage: 'system { voltages { "L" { V = 1 <U>; } } }',
     };
     for (const [family, source] of Object.entries(witness)) {

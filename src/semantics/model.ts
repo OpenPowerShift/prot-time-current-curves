@@ -44,7 +44,7 @@ import type {
 import { displayName } from '../parser/ast.js';
 import type { SequenceRange } from './quantity.js';
 import { lookupCurve, type CurveConstants } from '../constants/curves.js';
-import { amps, rawNumber, readRatio, readString, seconds } from './units.js';
+import { amps, rawNumber, readRatio, readString, seconds, FIELD_QUANTITY } from './units.js';
 import { isFaultType, type FaultType } from '../constants/sequence.js';
 
 /** Key for a level pair, order-independent. */
@@ -349,6 +349,8 @@ export interface Scenario {
 
 export interface Device {
   id: string;
+  /** The caption the sheet prints; `id` when absent. */
+  name?: string;
   kind?: string;
   /** Where it was written; see the note on `Fault.loc`. */
   loc?: SourceLocation;
@@ -412,6 +414,17 @@ export interface Grade {
     tolerance_pct?: number;
     free: Array<'tms' | 't_delay' | 'I_pickup'>;
   };
+  /**
+   * Set on the lower pair of a `below` / `middle` / `above` grade: the
+   * backup (the middle curve) is solved to sit `pct` of the way, in
+   * seconds at the fault, from the primary (below) to `above`.
+   */
+  spacing?: { pct: number; above: Ref };
+  /**
+   * What the source called the two sides, for messages: `below` and
+   * `middle` rather than `primary` and `backup` on an expanded grade.
+   */
+  roles?: [string, string];
   node: GradeBlock;
 }
 
@@ -757,7 +770,15 @@ export function buildStudy(doc: Document): Study {
     switch (item.type) {
       case 'meta':
         for (const [k, v] of Object.entries(item.entries)) {
-          study.meta[k] = scalarToPrimitive(v);
+          /*
+           * A time in `meta` (`margin = 300 ms;`) is read in seconds,
+           * as the same key is everywhere else. It was reduced to its
+           * bare number, so 300 ms became a 300 s margin and every
+           * grade that took the study-wide default failed.
+           */
+          study.meta[k] = FIELD_QUANTITY[k] === 'time'
+            ? seconds(v).value
+            : scalarToPrimitive(v);
         }
         break;
       case 'system':
@@ -956,6 +977,7 @@ export function buildStudy(doc: Document): Study {
       case 'device':
         study.devices.set(item.id, {
           id: item.id,
+          name: item.name,
           loc: item.loc,
           kind: item.kind,
           voltage: item.voltage,
@@ -1090,7 +1112,8 @@ export function buildStudy(doc: Document): Study {
         });
         break;
       case 'grade':
-        study.grades.push({
+        {
+          const base: Grade = {
           primary: item.primary,
           backup: item.backup,
           fault: item.fault,
@@ -1124,7 +1147,31 @@ export function buildStudy(doc: Document): Study {
               }
             : undefined,
           node: item,
-        });
+        };
+          /*
+           * `below` / `middle` / `above` is two pairs graded at one fault:
+           * below-middle, solved so the middle sits `spacing` of the way
+           * (in seconds) up to the above curve, and middle-above, checked.
+           * Expanded here so every reader of a grade -- the report, the
+           * solver, the sheet's margin annotations -- sees ordinary pairs.
+           */
+          const triple = item.below || item.middle || item.above || item.spacing_pct != null;
+          if (!triple) {
+            study.grades.push(base);
+          } else {
+            const solve = base.solve ?? { strategy: 'tight' as const, free: ['tms' as const] };
+            study.grades.push({
+              ...base, primary: item.below, backup: item.middle, solve,
+              roles: ['below', 'middle'],
+              spacing: item.above && item.spacing_pct != null
+                ? { pct: item.spacing_pct, above: item.above } : undefined,
+            });
+            study.grades.push({
+              ...base, primary: item.middle, backup: item.above, solve: undefined,
+              roles: ['middle', 'above'],
+            });
+          }
+        }
         break;
       default:
         break;
@@ -1455,8 +1502,10 @@ function resolveProducer(
   }
 
   /*
-   * Spec _Stage idempotency_: a stage carrying only `t_delay` is a
-   * legacy spelling of `curve = definite`.
+   * A stage carrying only `t_delay` was a legacy spelling of
+   * `curve = definite`. It is still read that way so an unmigrated
+   * study draws as it did, but the parser reports it (REMOVED_KEY) with
+   * `curve = definite;` as the rewrite.
    */
   if (declared('t_delay')) return { kind: 'definite' };
   return undefined;

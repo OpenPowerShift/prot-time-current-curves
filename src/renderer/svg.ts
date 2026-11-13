@@ -2428,7 +2428,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       }
 
       curves.push({
-        label: device.id,
+        label: device.name ?? device.id,
         color,
         pathD: upper?.d ?? '',
         pickupPx: NaN,
@@ -2454,7 +2454,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     if (!pathD) continue;
 
     curves.push({
-      label: device.id,
+      label: device.name ?? device.id,
       color,
       pathD,
       pickupPx: NaN,
