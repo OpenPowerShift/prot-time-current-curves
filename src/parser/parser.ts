@@ -569,9 +569,45 @@ class Parser {
   }
   private at(k: TokenKind): boolean { return this.peek().kind === k; }
   private eat(k: TokenKind): Token | null {
-    if (this.peek().kind !== k) return null;
+    if (this.peek().kind !== k) {
+      if (k === 'SEMI') this.noteMissingSemicolon();
+      return null;
+    }
     const t = this.tokens[this.pos++];
     return t;
+  }
+
+  /** Offsets already reported, since several readers may ask at one spot. */
+  private readonly missingSemis = new Set<number>();
+
+  /**
+   * A statement with no `;` before the next one.
+   *
+   * Every statement ends with `;`, and the reader has always taken a
+   * missing one in its stride -- so `axis = "secondary"` followed by
+   * the next key parsed, and the file looked right while saying
+   * something the spec does not. Reported where a new `key =`
+   * statement or the block's `}` follows, with the `;` as the fix. Not
+   * after a closing brace, where it is optional.
+   */
+  private noteMissingSemicolon(): void {
+    const prev = this.tokens[this.pos - 1];
+    const next = this.peek();
+    if (!prev || prev.kind === 'RBRACE' || prev.kind === 'LBRACE' || prev.kind === 'SEMI') return;
+    const newStatement = (next.kind === 'KW' || next.kind === 'IDENT')
+      && this.tokens[this.pos + 1]?.kind === 'EQUALS';
+    if (!newStatement && next.kind !== 'RBRACE') return;
+    const at = tokenEnd(prev);
+    if (this.missingSemis.has(at)) return;
+    this.missingSemis.add(at);
+    this.errors.push({
+      message: newStatement
+        ? `missing ";" before "${next.image}" -- each statement ends with ;`
+        : 'missing ";" before "}" -- each statement ends with ;',
+      line: prev.line, column: prev.col, offset: prev.start, length: prev.image.length,
+      severity: 'warning', code: 'MISSING_SEMICOLON',
+      fix: [{ offset: at, length: 0, text: ';' }],
+    });
   }
   private expect(k: TokenKind, what: string): Token {
     if (this.peek().kind === k) return this.tokens[this.pos++];
