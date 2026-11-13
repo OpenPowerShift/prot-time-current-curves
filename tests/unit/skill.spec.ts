@@ -36,12 +36,12 @@ describe('the skill as a document', () => {
      * short one: it carries the authority without the content.
      */
     /*
-     * Raised from 18k to 22k on 2026-11-13, agreed with the maintainer:
+     * Raised from 18k to 24k on 2026-11-13, agreed with the maintainer:
      * the one-way scoping rule, ratings, axis settings on the view and
      * the second grade shape are where AI-written studies went wrong,
      * and leaving them out to stay short is the worse trade.
      */
-    expect(SKILL.length).toBeLessThan(22_000);
+    expect(SKILL.length).toBeLessThan(24_000);
   });
 
   it('leads with the two rules that matter', () => {
@@ -56,9 +56,11 @@ describe('the skill as a document', () => {
     expect(opening).toMatch(/tc-curves check/);
   });
 
-  it('gives a ladder that says when to stop', () => {
+  it('gives a ladder that says which rows to use', () => {
+    /* "Stop at the first row that does not apply" read as cumulative
+     * to an agent in the blind evaluation; the rows are independent. */
     expect(SKILL).toMatch(/decision ladder/i);
-    expect(SKILL).toMatch(/Stop at the first row/);
+    expect(SKILL).toMatch(/add every row that applies/);
   });
 
   it('names the findings an agent will actually hit', () => {

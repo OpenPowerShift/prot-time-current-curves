@@ -32,7 +32,7 @@ import { process as processStudy, renderStudy, migrate } from './index.js';
 import { exportPng } from './export/export-png.js';
 import { exportPdfSheets, PAPER_MM } from './export/export-pdf.js';
 import { toExportableSvg } from './export/exportable-svg.js';
-import { formatGradeReports, anyGradeFails } from './semantics/grades.js';
+import { formatGradeReports, anyGradeFails, verdictOf } from './semantics/grades.js';
 import { jsonResult } from './semantics/json-report.js';
 import type { Diagnostic } from './semantics/validate.js';
 
@@ -397,6 +397,27 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   if (opts.command === 'check') {
+    if (!opts.quiet) {
+      /*
+       * What grading found, not only what validation found. These lived
+       * only in `report`, so `check` exited 0 on a study whose grades
+       * were never evaluated or whose relay could not operate at the
+       * fault -- clean by the command an author (or an agent) is told
+       * to run.
+       */
+      for (const g of result.reports) {
+        const pair = `grade ${g.primaryRef} / ${g.backupRef}`;
+        for (const d of g.diagnostics) {
+          if (d.severity === 'info') continue;
+          console.log(`${opts.input}: ${d.severity}: ${d.code}: ${pair}: ${d.message}`);
+        }
+        if (verdictOf(g) === 'fail') {
+          console.log(`${opts.input}: ${pair}: FAIL, worst margin `
+            + `${g.min_margin_s != null ? `${g.min_margin_s.toFixed(3)} s` : 'none'}`
+            + `${g.min_margin_at_A != null ? ` at ${Math.round(g.min_margin_at_A)} A` : ''}`);
+        }
+      }
+    }
     if (!hasErrors && !opts.quiet) {
       console.log(gradingFails
         ? `${opts.input}: no errors, but grading fails -- run report for the detail`

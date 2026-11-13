@@ -667,6 +667,8 @@ export interface GroupBlock extends BaseNode {
 export interface DeviceBlock extends BaseNode {
   type: 'device';
   id: string;
+  /** What the sheet prints; the id when absent. As on a relay. */
+  name?: string;
   /**
    * Voltage level this device sits on, named in `system.voltages`.
    *

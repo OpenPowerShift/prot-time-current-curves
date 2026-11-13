@@ -27,7 +27,7 @@ const rows: string[] = [];
 for (const file of readdirSync(dir).filter((f) => f.endsWith('.ptc')).sort()) {
   const src = readFileSync(join(dir, file), 'utf8');
   const r = run(src);
-  const findings = [...r.parseErrors, ...r.diagnostics];
+  const findings = [...r.parseErrors, ...r.diagnostics, ...r.reports.flatMap((g) => g.diagnostics)];
   for (const d of findings) {
     const t = tally.get(d.code) ?? { severity: d.severity, files: new Set(), example: d.message };
     t.files.add(file);

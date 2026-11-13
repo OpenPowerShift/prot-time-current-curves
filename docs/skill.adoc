@@ -34,12 +34,16 @@ and computes the grading margins between them.
 
 [source,bash]
 ----
-tc-curves check  study.ptc          # diagnostics + margins
+tc-curves check  study.ptc          # every finding, and each failing grade
+tc-curves report study.ptc          # the margins, pair by pair
 tc-curves render study.ptc --pdf    # the sheet
 ----
 
 Exit status: `0` clean, `1` a study error, `2` usage or I/O, `3` a
 valid study whose *grading fails* -- which is a real answer, not a bug.
+Exit `0` is not "coordinates": read every warning `check` prints. A
+grade with no `margin` has no verdict (`GRADE_NOT_EVALUATED`), and one
+where nothing operates at the fault is not a pass.
 
 == The smallest study that says something
 
@@ -103,7 +107,9 @@ document is an answer to a specific question the report raised.
 | `faults` | The currents grading is judged at. Without one there is
              nothing to compute a margin from.
 | `relay`  | A physical device. Its `element`s are its settings.
-| `grade`  | The question: does this pair coordinate? One per pair.
+| `grade`  | The question: does this pair coordinate? One per pair, with
+             a `margin` (or one in `meta`) -- without it there is no verdict.
+             A study with a single relay has nothing to grade, and that is fine.
 | `view`   | One sheet. Left bare, it fits itself to what is drawn.
 |===
 
@@ -164,7 +170,8 @@ element 51 {
 
 == The decision ladder
 
-Work down it. Stop at the first row that does not apply to your report.
+The rows are independent: add every row that applies to your report,
+and nothing for the rows that do not.
 
 [cols="1,3,2", options="header"]
 |===
@@ -301,7 +308,10 @@ for the conversion. That refusal is the tool working.
 
 Setting reports usually give minimum and maximum fault levels. Give
 both, and the margin is checked across the range rather than at one
-convenient current.
+convenient current. `I` is always required -- it is the current the
+grade is judged at; the range is stated *around* it. Where the report
+gives only a range, use the figure the report grades at, usually the
+maximum, and say so in your summary.
 
 [source,tc]
 ----
@@ -320,6 +330,22 @@ The upstream sweep is on by default: a pair that grades at the declared
 fault is also checked above it, because characteristics converge as the
 multiple rises. If it reports a failure above your fault, that is a
 real finding.
+
+An earth fault states its residual as well as its phase current, and
+its `type` (one of `three_phase`, `two_phase`, `two_phase_earth`,
+`single_phase_earth`):
+
+[source,tc]
+----
+faults {
+    F_EARTH { type = single_phase_earth; voltage = MV; I = 1.2 kA; residual = 1.2 kA; }
+}
+----
+
+The upstream sweep's ceiling is the largest fault at the primary's level
+-- phase faults included -- so on an earth sheet give
+`upstream_to = <the earth-fault maximum>;` on the grade, or the sweep
+judges earth relays at a phase-fault current.
 
 [#sequence]
 == 6. Negative sequence
@@ -381,7 +407,7 @@ current, not a time -- and goes in `currents`. `at_t` places its caption:
 [source,tc]
 ----
 currents {
-    "Cable rating" { I = 600 A; voltage = MV; at_t = 8 s; views = [F1_PHASE]; }
+    CABLE { name = "Cable rating"; I = 600 A; voltage = MV; at_t = 8 s; views = [F1_PHASE]; }
 }
 ----
 
@@ -409,7 +435,12 @@ device F_100T {
 A fuse grades on total-clear time as the primary and on minimum-melt as
 the backup, automatically. It can be named in a `grade` like any relay.
 
-A device takes `views` and `group` membership like an element.
+A device takes `name` and `views` like a relay element, and joins a
+chain by being listed in the group: `group AUX { members = [R_AUX, F_11A]; }`.
+A fuse the report gives only a rating for has no curve to draw: say it is
+missing rather than inventing one (its rating can go in `currents`).
+If the fault current is past the table's last point, the tool holds the
+last time and warns (`DEVICE_BEYOND_TABLE`) -- a finding to report.
 
 [#sheets]
 == 9. Several chains, several sheets
@@ -580,6 +611,11 @@ what they mean when they appear.
                                  they disagree; the residual is three
                                  times `I0`. Copy whichever the report
                                  gives and delete the other.
+| `FAULT_CURRENT_INVALID` | Usually a fault with no `I`: a range and
+                            components are given as well as `I`, not instead.
+| `GRADE_NOT_EVALUATED` | The grade has no `margin`, so no verdict.
+| `NO_OPERATION` / `SPACING_UNRESOLVED` | A relay does not pick up at the
+                            fault given -- often a pickup above it.
 | `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
                                 across a transformer whose windings do
                                 not settle how. Declare the
@@ -602,10 +638,15 @@ do not adjust settings to make it pass unless you were asked to.
 == Checklist before you hand it over
 
 . `tc-curves check study.ptc` exits `0`, or `3` with a grading failure
-  you have reported in words.
+  you have reported in words -- and every warning it printed is either
+  fixed or reported.
+. `tc-curves report study.ptc` gives each grade a verdict, not
+  "not evaluated".
 . Every number in the study appears in the source report. Nothing was
   inferred to fill a gap.
-. Every relay has `voltage` and `ct_ratio`.
+. Every relay has `voltage`, and `ct_ratio` where the report gives it
+  (it is required for settings in secondary amps; otherwise list it as
+  missing rather than invent it).
 . Every transformer the study grades across has its `vector_group`.
 . Every element states `curve` and either `tms` or `t_delay`.
 . Every number carries its unit: `A`, `kA`, `ms`, `s`, `kV`, `%`.

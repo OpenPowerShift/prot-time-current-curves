@@ -703,7 +703,19 @@ function validateFaults(ctx: Ctx): void {
         didYouMean(suggest(fault.voltage, names)),
         fault.loc);
     }
-    if (!(fault.I_A > 0)) {
+    if (!Number.isFinite(fault.I_A)) {
+      /*
+       * Said in words rather than as `I = NaN`, which is what a fault
+       * written with only a range, or only its residual, used to be
+       * told. `I` is the current the grade is judged at; a range and
+       * the components are stated around it, not instead of it.
+       */
+      add(ctx, 'FAULT_CURRENT_INVALID', 'error',
+        `fault ${fault.id} gives no I -- the current it is graded at. A range `
+        + '(I_min, I_max) and components (residual, I2, ...) are given as well as I, '
+        + 'not instead of it',
+        fault.loc);
+    } else if (!(fault.I_A > 0)) {
       add(ctx, 'FAULT_CURRENT_INVALID', 'error',
         `fault ${fault.id} declares I = ${fault.I_A}; it must be strictly positive`,
         fault.loc);

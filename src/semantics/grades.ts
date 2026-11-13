@@ -1106,6 +1106,38 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
     });
   }
 
+  /*
+   * A published fuse or device table stops somewhere. Past its last
+   * point the time is held at that point's value -- a reasonable reading
+   * of a curve that has flattened, but not data -- and a margin taken
+   * there rests on it, so it is said.
+   */
+  for (const [side, I] of [[primary, declaredRow?.I_f_A], [backup, declaredRow?.I_backup_A]] as const) {
+    const device = side.device;
+    if (!device || I == null || !Number.isFinite(I)) continue;
+    const points = [device.total_clear, device.min_melt, device.flex_points]
+      .flatMap((p) => p ?? []);
+    if (points.length === 0) continue;
+    const top = Math.max(...points.map((p) => p.I_A));
+    if (I > top) {
+      diagnostics.push({
+        code: 'DEVICE_BEYOND_TABLE',
+        severity: 'warning',
+        message: `${side.ref}'s published curve ends at ${Math.round(top)} A; at `
+          + `${Math.round(I)} A its time is held at the last point, not read from data`,
+      });
+    }
+  }
+
+  /* No requirement means no verdict, which is easy to read as a pass. */
+  if (grade.CTI_min_s == null && grade.margin_s == null) {
+    diagnostics.push({
+      code: 'GRADE_NOT_EVALUATED',
+      severity: 'warning',
+      message: 'no margin to judge this pair against -- give margin on the grade or in meta',
+    });
+  }
+
   registerRecompute(report, grade, primary, backup);
   planSolve(study, grade, report, declaredRow, primary, backup, diagnostics);
 
@@ -1221,7 +1253,8 @@ function planSolve(
         code: 'SPACING_UNRESOLVED',
         severity: 'warning',
         message: `${grade.roles?.[0] ?? 'below'} or above does not operate at the fault, `
-          + 'so there is no gap to place the middle curve in',
+          + `so there is no gap to place the middle curve in; ${backup.ref} is left at its `
+          + 'declared setting, unsolved',
       });
       return;
     }

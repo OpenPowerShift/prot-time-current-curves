@@ -369,7 +369,7 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   stage:       ['function', 'measures', 'curve', 'formula', 'flex_points', 'I_pickup',
                'I_units', 'share', 'tms', 't_delay', 't_floor',
                'I_cutoff', 'color', 'style', 'width_px', 'comment'],
-  device:      ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S',
+  device:      ['name', 'kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S',
                'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views',
                'comment', 'description', 'reference'],
   grade:       ['primary', 'backup', 'below', 'middle', 'above', 'spacing',

@@ -1029,8 +1029,7 @@ class Parser {
         case 'I0':    p.I0_A = this.parseNumberWithUnit_A('I0'); break;
         case 'residual': p.earth_A = this.parseNumberWithUnit_A('residual'); break;
         case 'type': {
-          const kw = this.matchKeyword(
-            'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+          const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
           if (kw) p.faultType = kw as import('./ast.js').FaultTypeKeyword;
           break;
         }
@@ -1467,7 +1466,10 @@ class Parser {
           this.expect('EQUALS', '=');
           switch (k.image) {
             /* Fault currents carry an `A` / `kA` suffix; fold it in. */
-            case 'type':     f.type = this.parseQuantityValue() as
+            /* A word from a closed set: a misspelt type is refused, since
+             * it decides how every component of the fault is derived. */
+            case 'type':     f.type = (this.keywordFrom('type', 'three_phase', 'two_phase',
+                               'two_phase_earth', 'single_phase_earth') ?? undefined) as
                                import('./ast.js').FaultTypeKeyword | undefined; break;
             case 'I':      f.I_A = this.parseNumberWithUnit_A('I'); break;
             case 'I_min':    f.min_A = this.parseNumberWithUnit_A('I_min'); break;
@@ -1577,8 +1579,7 @@ class Parser {
             case 'at_3I0':
               t.at_earth_A = this.parseNumberWithUnit_A(k.image); break;
             case 'type': {
-              const kw = this.matchKeyword(
-                'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+              const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
               if (kw) t.faultType = kw as import('./ast.js').FaultTypeKeyword;
               break;
             }
@@ -1651,8 +1652,7 @@ class Parser {
             case 'at_t': c.at_t_s = this.parseNumberWithUnit_s('at_t'); break;
             case 'voltage': c.voltage = this.parseStringOrIdent(); break;
             case 'type': {
-              const kw = this.matchKeyword(
-                'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+              const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
               if (kw) c.faultType = kw as import('./ast.js').FaultTypeKeyword;
               break;
             }
@@ -2202,7 +2202,7 @@ if (kwName === 'flex_points') {
             if (names.length > 0) d.views = [...(d.views ?? []), ...names];
           }
           break;
-        case 'voltage':
+        case 'voltage': case 'name':
         case 'maker': case 'model': case 'description': case 'comment': case 'reference':
           {
             /*
@@ -2213,6 +2213,7 @@ if (kwName === 'flex_points') {
             const v = this.parseStringOrIdent();
             this.eat('SEMI');
             if (k.image === 'voltage') d.voltage = v;
+            if (k.image === 'name') d.name = v;
             if (k.image === 'maker') d.maker = v;
             if (k.image === 'model') d.model = v;
             if (k.image === 'description') d.description = v;
@@ -2221,7 +2222,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views', 'comment', 'description', 'reference']);
+          this.noteUnknownKey('a device', k, ['name', 'kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views', 'comment', 'description', 'reference']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -2472,8 +2473,7 @@ if (kwName === 'flex_points') {
           case 'at_3I0':
             a.at_earth_A = this.parseNumberWithUnit_A(k.image); this.eat('SEMI'); break;
           case 'type': {
-            const kw = this.matchKeyword(
-              'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
+            const kw = this.keywordFrom('type', 'three_phase', 'two_phase', 'two_phase_earth', 'single_phase_earth');
             this.eat('SEMI');
             if (kw) a.faultType = kw as import('./ast.js').FaultTypeKeyword;
             break;

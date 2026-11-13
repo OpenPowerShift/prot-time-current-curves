@@ -349,6 +349,8 @@ export interface Scenario {
 
 export interface Device {
   id: string;
+  /** The caption the sheet prints; `id` when absent. */
+  name?: string;
   kind?: string;
   /** Where it was written; see the note on `Fault.loc`. */
   loc?: SourceLocation;
@@ -975,6 +977,7 @@ export function buildStudy(doc: Document): Study {
       case 'device':
         study.devices.set(item.id, {
           id: item.id,
+          name: item.name,
           loc: item.loc,
           kind: item.kind,
           voltage: item.voltage,
