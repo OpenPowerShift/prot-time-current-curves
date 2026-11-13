@@ -11,7 +11,7 @@ version on `--version`:
 [source,console]
 ----
 $ tc-curves --version
-tc-curves 0.1.0  (language spec 0.1.0)
+tc-curves 0.2.0  (language spec 0.2.0)
 ----
 
 The language version is incremented in lockstep with `tc-curves` only
