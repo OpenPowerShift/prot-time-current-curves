@@ -35,7 +35,13 @@ describe('the skill as a document', () => {
      * one that gets skimmed, and a skimmed instruction is worse than a
      * short one: it carries the authority without the content.
      */
-    expect(SKILL.length).toBeLessThan(18_000);
+    /*
+     * Raised from 18k to 22k on 2026-11-13, agreed with the maintainer:
+     * the one-way scoping rule, ratings, axis settings on the view and
+     * the second grade shape are where AI-written studies went wrong,
+     * and leaving them out to stay short is the worse trade.
+     */
+    expect(SKILL.length).toBeLessThan(22_000);
   });
 
   it('leads with the two rules that matter', () => {

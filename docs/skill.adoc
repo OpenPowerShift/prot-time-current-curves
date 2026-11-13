@@ -122,7 +122,10 @@ them.
 | Setting in secondary A | `I_pickup = 6 A_sec;` | Needs `ct_ratio`.
 | TMS / TD / time dial | `tms = 0.10;` | Never guess this.
 | IEC standard inverse | `curve = iec.si;` | See the curve table below.
-| Definite time, 0.1 s | `curve = definite; t_delay = 100 ms;` | No `tms`.
+| Definite time, 0.1 s | `curve = definite; t_delay = 100 ms;` | No `tms`. Always write the `curve`.
+| Min. time of the curve | `t_floor = 100 ms;` | On an inverse stage. Never `t_delay` there.
+| Added delay on an IDMT stage | -- | Not supported. Say so in your summary.
+| Relay sees 50 % of the fault | `share = 50 %;` | Every percentage takes `%`.
 | 50 / high-set / I>> | a second `element`, or a `stage` | Below.
 | 51N / 51G / earth | `function = earth_fault;` | Measures residual `3I0`.
 | 46 / negative sequence | `function = neg_seq; measures = I2;` | State the scaling.
@@ -173,7 +176,7 @@ Work down it. Stop at the first row that does not apply to your report.
 | 4 | spans a transformer | a second voltage, a `transformer` with its vector group, <<levels>>
 | 5 | gives a fault *range*, not one figure | `I_min` / `I_max`, <<ranges>>
 | 6 | gives negative-sequence settings | `measures = I2` or `3I2`, <<sequence>>
-| 7 | states a required clearance time | a `times` block, <<times>>
+| 7 | states a required clearance time, or a rating | `times` / `currents`, <<times>>
 | 8 | includes a fuse or cable damage curve | a `device`, <<devices>>
 | 9 | is several chains, or needs several sheets | `group` and `view`, <<sheets>>
 | 10 | needs a mark or margin figure | `point` / `annotate`, <<marks>>
@@ -369,7 +372,22 @@ times {
 
 `at_I` says where along the rule to write its caption -- beside the
 curve the requirement bites on. It does not restrict which sheets the
-rule applies to; `views` does that.
+rule applies to; `views` does that. Requirements at the same time share
+one rule and one caption.
+
+An equipment rating or a load limit is the vertical counterpart -- a
+current, not a time -- and goes in `currents`. `at_t` places its caption:
+
+[source,tc]
+----
+currents {
+    "Cable rating" { I = 600 A; voltage = MV; at_t = 8 s; views = [F1_PHASE]; }
+}
+----
+
+Style each kind of rule in its own page block, with the same keys:
+`page { faults { ... } times { ... } currents { ... } }`, each taking
+`style`, `color`, `width_px`, `labels`, `values`.
 
 [#devices]
 == 8. Fuses, cables and damage curves
@@ -411,7 +429,43 @@ view F2_PHASE { group = FEEDER_2; quantity = phase; title = "Feeder 2"; }
 A relay in both chains is drawn on both sheets -- an incomer backs up
 everything, so it belongs to every chain it is on.
 
-Items name their sheets with `views`; a view never lists or contains them.
+*Scoping runs one way.* Every drawn item -- element, device, fault,
+`times` entry, `currents` entry, point, annotation -- names its sheets
+with `view = X` or `views = [X, Y]`; with neither it is on every sheet.
+A view never lists or contains its items: `view { currents = [...] }`
+and a `times { }` written inside a view are both errors.
+
+Everything about a sheet's axes is on its view, not the page:
+
+[source,tc]
+----
+view F1_PHASE {
+    group = FEEDER_1; quantity = phase; voltage = MV;
+    current_min = 50 A; current_max = 30 kA;   # omit to fit automatically
+    time_min = 10 ms;   time_max = 10 s;
+    tick_density = "normal";                  # sparse | normal | dense
+}
+----
+
+[#placing]
+=== Placing a relay between two others
+
+When the report asks for the margin spread between a downstream and an
+upstream relay, `grade` has a second shape. It solves the middle relay's
+`tms` so its time at the fault sits `spacing` of the way from `below`
+(faster) to `above` (slower), and checks both gaps against `margin`:
+
+[source,tc]
+----
+grade {
+    below = R_RMU:51; middle = R_FDR:51; above = R_INCOMER:51;
+    fault = F_RMU_MIN; spacing = 50 %; margin = 0.30 s;
+}
+----
+
+Use `primary` / `backup` or `below` / `middle` / `above`, never both in
+one block. Only use this when the report asks for a setting to be
+chosen; otherwise grade the pairs as the report set them.
 
 [#marks]
 == 10. Marking the sheet: points and annotations
@@ -530,6 +584,15 @@ what they mean when they appear.
                                 across a transformer whose windings do
                                 not settle how. Declare the
                                 `vector_group`, or use a `scenario`.
+| `RENAMED_KEY`, `REMOVED_KEY` | An older form of the language. Run
+                                 `tc-curves migrate study.ptc`; what it
+                                 cannot rewrite, the message explains.
+| `UNIT_MISSING` | A bare number. Every quantity states its unit, a
+                   percentage included (`share = 50 %`).
+| `VIEW_LISTS_ITEMS` | A view listing its items. Put `views = [..]` on
+                       each item instead.
+| `DELAY_ON_INVERSE` | `t_delay` on an inverse stage. Use `t_floor` for a
+                       minimum time; an adder is not supported.
 |===
 
 A study that grades *fail* is not a broken study. It is the answer.
@@ -545,6 +608,8 @@ do not adjust settings to make it pass unless you were asked to.
 . Every relay has `voltage` and `ct_ratio`.
 . Every transformer the study grades across has its `vector_group`.
 . Every element states `curve` and either `tms` or `t_delay`.
+. Every number carries its unit: `A`, `kA`, `ms`, `s`, `kV`, `%`.
+. Every item that belongs to some sheets only says so with `views`.
 . Sequence and earth elements state what they measure.
 . Each `grade` names a fault that exists at the primary's own voltage.
 . Anything the report did not give is *named in your summary* as
