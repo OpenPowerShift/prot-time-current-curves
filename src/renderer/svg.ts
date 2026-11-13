@@ -1846,7 +1846,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     /*
      * A study is written in primary amps because that is what the fault
      * study gives, but the number an engineer types into the relay is
-     * the secondary one. `page { legend { currents } }` asks for that
+     * the secondary one. `page { legend { I_units } }` asks for that
      * figure whatever the abscissa is doing -- the two are separate
      * questions, and a sheet taken to site wants the settings in the
      * units of the settings sheet.
