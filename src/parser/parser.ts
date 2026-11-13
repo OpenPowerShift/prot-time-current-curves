@@ -2024,6 +2024,14 @@ if (kwName === 'flex_points') {
         case 'total_clear':
           d.total_clear = this.parseFlexList();
           break;
+        case 'view':
+        case 'views':
+          {
+            const names = this.parseNameList();
+            this.eat('SEMI');
+            if (names.length > 0) d.views = [...(d.views ?? []), ...names];
+          }
+          break;
         case 'voltage':
         case 'maker': case 'model': case 'description': case 'comment': case 'reference':
           {
@@ -2043,7 +2051,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'comment', 'description', 'reference']);
+          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views', 'comment', 'description', 'reference']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -2679,6 +2687,27 @@ if (kwName === 'flex_points') {
             v.isDefault = this.parseBool(); this.eat('SEMI'); break;
           case 'comment':
             v.comment = this.parseStringOrIdent(); this.eat('SEMI'); break;
+          case 'currents': case 'faults': case 'times': case 'devices':
+          case 'elements': case 'relays': case 'points': case 'annotations': {
+            /*
+             * Scoping runs one way: an item names the sheets it is on.
+             * A view listing its items was a second way to say the same
+             * thing -- and it was warned and dropped, so the ratings it
+             * listed appeared on every sheet.
+             */
+            const sheet = v.id ?? v.name ?? '<this view>';
+            const what = k.image.replace(/s$/, '');
+            const fix = k.image === 'relays'
+              ? `select a chain with group, or put views = ["${sheet}"] on each element`
+              : `put views = ["${sheet}"] on each ${what} instead`;
+            this.errors.push({
+              message: `a view does not list its ${k.image}; ${fix}`,
+              line: k.line, column: k.col, offset: k.start, length: k.end - k.start,
+              severity: 'error', code: 'VIEW_LISTS_ITEMS',
+            });
+            this.parseScalarValue(); this.eat('SEMI');
+            break;
+          }
           default:
             this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'nudge_px', 'reference_ct', 'comment']);
             this.parseScalarValue(); this.eat('SEMI');

@@ -2400,6 +2400,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const deviceBands: DeviceBand[] = [];
 
   for (const device of study.devices.values()) {
+    /*
+     * Scoped exactly as an element is: its own `views` wins, then the
+     * sheet's `group` (a group may list a device), then drawn. Devices
+     * were drawn on every sheet regardless, so a fuse on the auxiliary
+     * chain turned up on the BESS phase sheet.
+     */
+    if (!elementOnThisSheet(device, device.id)) continue;
     const { color } = pickStyle();
 
     /* Fuse band: min-melt and total-clear bound a hatched region. */

@@ -680,6 +680,12 @@ export interface DeviceBlock extends BaseNode {
   comment?: string;
   description?: string;
   reference?: string;
+  /**
+   * Sheets this device is drawn on. Same meaning as an element's
+   * `views`: it overrides a sheet's `group`, and with neither the
+   * device is drawn everywhere.
+   */
+  views?: string[];
 }
 
 /* ------------------------------------------------------------------ */

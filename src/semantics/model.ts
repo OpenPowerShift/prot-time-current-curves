@@ -360,6 +360,8 @@ export interface Device {
   t_delay_s?: number;
   description?: string;
   comment?: string;
+  /** Sheets it is drawn on; see `DeviceBlock.views`. */
+  views?: string[];
 }
 
 export interface Combine {
@@ -962,6 +964,7 @@ export function buildStudy(doc: Document): Study {
           t_delay_s: item.t_delay,
           description: item.description,
           comment: item.comment,
+          views: item.views,
         });
         break;
       case 'point':

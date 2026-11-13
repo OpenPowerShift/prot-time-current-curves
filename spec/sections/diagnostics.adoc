@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-136 codes.
+137 codes.
 
 === Lexing and parsing
 
@@ -37,6 +37,7 @@ each, most serious first.
 | `UNKNOWN_TOP_LEVEL` | error | A top-level block whose keyword the language does not have.
 | `UNTERMINATED_BLOCK_COMMENT` | error | A `/* ... */` comment reaches the end of the file without closing.
 | `UNTERMINATED_STRING` | error | A quoted string reaches the end of the line without closing.
+| `VIEW_LISTS_ITEMS` | error | A view listing the items drawn on it; membership is stated on each item with `views`.
 |===
 
 === Keys and values

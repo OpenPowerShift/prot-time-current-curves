@@ -1914,10 +1914,24 @@ only to be drawn may be declared on the drawing.
 
 === What decides whether something is drawn
 
-Three tiers, in order, so the common case needs no scoping at all:
+Membership runs one way: an item names the sheets it is drawn on, with
+`view = X` or `views = [X, Y]`. A `view` never lists its items --
+`view { currents = [...] }` (likewise `faults`, `times`, `devices`,
+`elements`, `points`, `annotations`) is an error (`VIEW_LISTS_ITEMS`)
+whose message names the fix. A view selects only through `group` and
+`condition`.
 
-. an element's own `view` / `views`, which wins;
-. otherwise the sheet's `group`, if it names one;
+Every drawn declaration takes `view` / `views` with the same meaning:
+an element, a device, a fault, a `times` entry, a `currents` entry, a
+point, an annotation. A relay does not: its elements carry it, and a
+relay is selected for a sheet through a `group`.
+
+For curves -- elements and devices -- three tiers, in order, so the
+common case needs no scoping at all:
+
+. the curve's own `view` / `views`, which wins;
+. otherwise the sheet's `group`, if it names one (a group may list
+  devices as well as relays);
 . otherwise it is drawn.
 
 An annotation is narrower still: one that names elements is drawn only

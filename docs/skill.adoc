@@ -391,6 +391,8 @@ device F_100T {
 A fuse grades on total-clear time as the primary and on minimum-melt as
 the backup, automatically. It can be named in a `grade` like any relay.
 
+A device takes `views` and `group` membership like an element.
+
 [#sheets]
 == 9. Several chains, several sheets
 
@@ -408,6 +410,8 @@ view F2_PHASE { group = FEEDER_2; quantity = phase; title = "Feeder 2"; }
 
 A relay in both chains is drawn on both sheets -- an incomer backs up
 everything, so it belongs to every chain it is on.
+
+Items name their sheets (`views`); a view never lists its items.
 
 For a mark that belongs to exactly one sheet, write it inside the view
 rather than inventing a name to reference:

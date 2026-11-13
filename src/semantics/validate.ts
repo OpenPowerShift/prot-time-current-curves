@@ -302,6 +302,8 @@ function validateViewScopes(ctx: Ctx): void {
   for (const t of study.times.values()) check(t.views, `time ${t.id}`);
   for (const f of study.faults.values()) check(f.views, `fault ${f.id}`);
   for (const sc of study.scenarios.values()) check(sc.views, `scenario ${sc.id}`);
+  for (const d of study.devices.values()) check(d.views, `device ${d.id}`, d.loc);
+  for (const c of study.currents.values()) check(c.views, `current "${c.name}"`);
 
   /*
    * A nested block that also names a scope.
