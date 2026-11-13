@@ -170,7 +170,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   second_axis: M('view', 'A second current scale across the top, in another voltage level\'s amps. Ampere-turns referral is a uniform map, so it is the same pixels relabelled -- no curve moves.', 'second_axis = HV;'),
   reference_ct:M('view', 'Curve whose CT anchors the secondary axis.', 'reference_ct = R_FDR:51;'),
   'view.stages': M('view', 'Composite (default) renders the pointwise-min of all stages; individual draws each.', 'stages = "composite";'),
-  current_min: M('view', 'Minimum displayed current on the X-axis.', 'current_min = 100 A;'),
+  current_min: M('view', 'Minimum displayed current on the X-axis, in the amps the axis shows -- secondary amps on axis = secondary.', 'current_min = 100 A;'),
   I2_min: M('faults', 'Lowest negative-sequence current for this condition. Declare I2 as well: a range without a centre is refused.', 'I2_min = 300 A;'),
   I2_max: M('faults', 'Highest negative-sequence current for this condition.', 'I2_max = 900 A;'),
   I1_min: M('faults', 'Lowest positive-sequence current for this condition.', 'I1_min = 300 A;'),

@@ -580,6 +580,26 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * curve still computes against its *own* CT; only the axis labelling
    * uses this one.
    */
+  /*
+   * Whether a relay has a curve on this sheet, by the same tiers the
+   * curves themselves are scoped by (own `views`, then the sheet's
+   * `group`, then everywhere). The reference CT used to be chosen from
+   * every relay in the study, so a sheet carrying only a fuse was
+   * labelled in the secondary amps of an incomer that was not on it.
+   */
+  const sheetId = view?.id ?? view?.name;
+  const sheetGroup = view?.group ? study.groups.get(view.group) : undefined;
+  const relayOnSheet = (relay: { id: string; elements: Element[] }): boolean =>
+    relay.elements.some((el) => {
+      if (el.views && el.views.length > 0) {
+        if (sheetId == null) return false;
+        return el.views.some((v) => v.startsWith('~'))
+          ? !el.views.includes(`~${sheetId}`)
+          : el.views.includes(sheetId);
+      }
+      return sheetGroup ? sheetGroup.members.includes(relay.id) : true;
+    });
+
   const referenceCt = ((): number | undefined => {
     if (axisMode !== 'secondary') return undefined;
     const named = view?.reference_ct?.deviceId
@@ -587,6 +607,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       : undefined;
     if (named) return named;
     const ratios = [...study.relays.values()]
+      .filter(relayOnSheet)
       .map((r) => r.ct_ratio)
       .filter((r): r is number => r != null && r > 0);
     return ratios.length > 0 ? Math.max(...ratios) : undefined;
@@ -1234,8 +1255,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const yMinFixed = view?.time_min != null && Number.isFinite(view.time_min);
   const yMaxFixed = view?.time_max != null && Number.isFinite(view.time_max);
 
-  if (xMinFixed) I_lo = view!.current_min!;
-  if (xMaxFixed) I_hi = view!.current_max!;
+  /*
+   * Declared bounds are in the amps the axis shows -- so on a
+   * secondary sheet they are secondary amps, scaled back to primary, the frame every curve is computed in. They were
+   * taken as primary amps whatever the axis, so `current_max = 41 A`
+   * on a secondary sheet meant 41 A *primary* and the curves fell off
+   * the sheet. A zoom from the playground is already primary.
+   */
+  /* A `multiples` axis has no amps of its own, so its bounds stay in
+   * primary amps, which is what their `A` says. */
+  const toPrimary = axisMode === 'secondary' && referenceCt ? referenceCt : 1;
+  if (xMinFixed) I_lo = view!.current_min! * toPrimary;
+  if (xMaxFixed) I_hi = view!.current_max! * toPrimary;
+  if (view?.zoom_A?.min != null && Number.isFinite(view.zoom_A.min)) I_lo = view.zoom_A.min;
+  if (view?.zoom_A?.max != null && Number.isFinite(view.zoom_A.max)) I_hi = view.zoom_A.max;
   if (yMinFixed) t_lo = view!.time_min!;
   if (yMaxFixed) t_hi = view!.time_max!;
 
@@ -1463,6 +1496,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
 
   /* Curves -- driven entirely by the resolved study model. */
   const curves: CurveEntry[] = [];
+  /** Curves with no part inside the plotted window, for the notes. */
+  const offWindowCurves: string[] = [];
   /*
    * Hues are assigned in fixed slot order. Past the end of the palette
    * the hue repeats but the stroke changes to dashed, then dotted, so
@@ -2340,7 +2375,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           /* A stage may stop earlier than the element that owns it. */
           stage.I_cutoff_A,
         );
-        if (!pathD) continue;
+        if (!pathD) { offWindowCurves.push(`${element.label}/${stageCaption(stage)}`); continue; }
         curves.push({
           /* The caption is typeset; the ref is matched, so it keeps
            * the handle exactly as the study wrote it. */
@@ -2377,7 +2412,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
        */
       cutoffOf(element),
     );
-    if (!pathD) continue;
+    if (!pathD) { offWindowCurves.push(element.label); continue; }
     curves.push({
       label: element.label,
       ref: element.ref,
@@ -2451,7 +2486,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
                 `L${xScale.toPx(I_max).toFixed(1)} ${py.toFixed(1)}`;
       }
     }
-    if (!pathD) continue;
+    if (!pathD) { offWindowCurves.push(device.name ?? device.id); continue; }
 
     curves.push({
       label: device.name ?? device.id,
@@ -2479,7 +2514,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * sheet's amps happened to put it.
      */
     const pathD = trace(combine.voltage_kV, (I) => tTripCombine(study, combine, I));
-    if (!pathD) continue;
+    if (!pathD) { offWindowCurves.push(combine.name); continue; }
     const detailLines: DetailLine[] = [{ text: `Combine · ${combine.as}`, role: 'settings' }];
     /*
      * Named only where it differs from the sheet: on a single-voltage
@@ -4443,6 +4478,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
           );
         }
       }
+    }
+    /*
+     * A curve drawn entirely off the plotted window. The legend still
+     * lists it, so a sheet whose bounds miss every curve read as a
+     * sheet with curves that had failed to draw -- with nothing saying
+     * the window was the reason.
+     */
+    const offWindow = [...new Set(offWindowCurves)];
+    if (offWindow.length > 0) {
+      axisNotes.push(`outside the plotted currents and times: ${offWindow.join(', ')}`);
+    }
+    if (axisMode === 'secondary' && !referenceCt) {
+      axisNotes.push('axis = secondary needs a relay with a ct_ratio on this sheet, '
+        + 'or reference_ct; drawn in primary amps');
     }
     if (offAxisElements.length > 0) {
       axisNotes.push(

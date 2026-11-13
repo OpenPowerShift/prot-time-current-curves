@@ -1530,9 +1530,15 @@ strip.
 
 `reference_ct` names the curve the axis is anchored to: its `ct_ratio`
 for `axis = "secondary"`, its pickup for `axis = "multiples"`. Omitted,
-the renderer takes the highest ratio (or the highest pickup) in the
-plot. Every curve still computes against its own; only the labelling
-uses the reference.
+the renderer takes the highest ratio (or the highest pickup) among the
+relays *on that sheet*; a secondary sheet with no relay carrying a CT
+says so in its notes and is drawn in primary amps. Every curve still
+computes against its own; only the labelling uses the reference.
+
+`current_min` / `current_max` are in the amps the axis shows: on a
+secondary sheet, secondary amps of the reference CT. A `multiples` axis
+has no amps of its own, so its bounds stay in primary amps. A curve
+with no part inside the window is named in the notes.
 
 == Page (layout / theme / legend / colours)
 

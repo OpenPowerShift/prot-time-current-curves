@@ -1517,8 +1517,7 @@ export class TcViewer extends LitElement {
     if (this.currentMin == null && this.currentMax == null) return declared;
     return {
       ...(declared ?? { type: 'view', loc: { line: 1, column: 1, offset: 0 } }),
-      current_min: this.currentMin ?? declared?.current_min,
-      current_max: this.currentMax ?? declared?.current_max,
+      zoom_A: { min: this.currentMin ?? undefined, max: this.currentMax ?? undefined },
     } as import('../parser/index.js').ViewBlock;
   }
 
@@ -1624,8 +1623,7 @@ render() {
     if (this.currentMin != null || this.currentMax != null) {
       viewClamped = {
         ...(view ?? { type: 'view', loc: { line: 1, column: 1, offset: 0 } }),
-        current_min: this.currentMin ?? view?.current_min,
-        current_max: this.currentMax ?? view?.current_max,
+        zoom_A: { min: this.currentMin ?? undefined, max: this.currentMax ?? undefined },
       } as import('../parser/index.js').ViewBlock;
     }
     const opts: RenderOptions = {
