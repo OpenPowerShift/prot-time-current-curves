@@ -57,6 +57,8 @@ export interface MarginRow {
 }
 
 export interface GradeReport {
+  /** A below/middle/above grade whose middle curve could not be placed. */
+  unplaced?: boolean;
   /**
    * For the lower pair of a `below` / `middle` / `above` grade: where
    * the middle curve was placed, and the gap it was placed in.
@@ -102,6 +104,8 @@ export interface GradeReport {
 export type Verdict = 'pass' | 'fail' | 'unevaluated';
 
 export function verdictOf(report: GradeReport): Verdict {
+  /* A middle curve that could not be placed has no setting to judge. */
+  if (report.unplaced) return 'unevaluated';
   const required = report.CTI_min_s ?? report.margin_s;
   if (required == null) return 'unevaluated';
   if (report.min_margin_s == null || !Number.isFinite(report.min_margin_s)) {
@@ -1265,6 +1269,12 @@ function planSolve(
           + `so there is no gap to place the middle curve in; ${backup.ref} is left at its `
           + 'declared setting, unsolved',
       });
+      /*
+       * And this pair is not judged. It used to report PASS -- 27 s of
+       * margin against a middle relay left at whatever it was declared
+       * with, or at no dial at all -- which reads as a setting found.
+       */
+      report.unplaced = true;
       return;
     }
     target_s = (grade.spacing.pct / 100) * (row.t_backup_s - row.t_primary_s);
@@ -1650,7 +1660,9 @@ export function formatGradeReport(report: GradeReport): string {
      * to print no verdict line at all, so the one line a reader looks
      * for was simply missing and its absence had to be interpreted.
      */
-    out.push('    overall         : not evaluated -- no margin could be computed');
+    out.push(report.unplaced
+      ? '    overall         : not evaluated -- the middle curve could not be placed'
+      : '    overall         : not evaluated -- no margin could be computed');
   }
 
   for (const d of report.diagnostics) {
