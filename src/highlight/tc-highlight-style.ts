@@ -76,6 +76,53 @@ export const tcEditorTheme = EditorView.theme({
     backgroundColor: 'var(--tc-accent)',
     color: 'var(--tc-accent-fg)',
   },
+  /*
+   * The Find / Replace panel (Ctrl/Cmd-F). The search package's base
+   * theme paints it, its fields and its buttons in fixed light-mode
+   * greys, so on the dark theme it was a white slab across the editor.
+   */
+  '.cm-panels': {
+    backgroundColor: 'var(--tc-bg-elevated)',
+    color: 'var(--tc-fg)',
+  },
+  '.cm-panels.cm-panels-top': { borderBottom: '1px solid var(--tc-border)' },
+  '.cm-panels.cm-panels-bottom': { borderTop: '1px solid var(--tc-border)' },
+  '.cm-search': { fontFamily: 'inherit' },
+  '.cm-search label': { color: 'var(--tc-fg-muted)' },
+  '.cm-textfield': {
+    backgroundColor: 'var(--tc-bg-sunken)',
+    color: 'var(--tc-fg)',
+    border: '1px solid var(--tc-border)',
+    borderRadius: '3px',
+  },
+  '.cm-textfield:focus': {
+    outline: '2px solid color-mix(in srgb, var(--tc-accent) 60%, transparent)',
+    outlineOffset: '-1px',
+  },
+  '.cm-button': {
+    backgroundImage: 'none',
+    backgroundColor: 'var(--tc-bg-sunken)',
+    color: 'var(--tc-fg)',
+    border: '1px solid var(--tc-border)',
+    borderRadius: '3px',
+  },
+  '.cm-button:hover': { borderColor: 'var(--tc-accent)' },
+  '.cm-button:active': {
+    backgroundImage: 'none',
+    backgroundColor: 'color-mix(in srgb, var(--tc-accent) 20%, var(--tc-bg-sunken))',
+  },
+  '.cm-search input[type=checkbox]': { accentColor: 'var(--tc-accent)' },
+  '.cm-panel button[name=close]': { color: 'var(--tc-fg-muted)' },
+  '.cm-searchMatch': {
+    backgroundColor: 'color-mix(in srgb, var(--tc-warning) 30%, transparent)',
+    outline: '1px solid color-mix(in srgb, var(--tc-warning) 60%, transparent)',
+  },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'color-mix(in srgb, var(--tc-accent) 40%, transparent)',
+  },
+  '.cm-selectionMatch': {
+    backgroundColor: 'color-mix(in srgb, var(--tc-accent) 15%, transparent)',
+  },
 }, { dark: false });
 
 /** The complete visual package for the editor. */
