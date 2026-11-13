@@ -816,6 +816,8 @@ export interface ViewBlock extends BaseNode {
    * feeder amps along the bottom, incomer amps along the top.
    */
   second_axis?: string;
+  /** Minor gridline subdivision on this sheet's axes. */
+  tick_density?: 'sparse' | 'normal' | 'dense';
   /** Per-sheet override of `page { curves { nudge_px } }`. */
   nudge_px?: number;
   reference_ct?: Ref;

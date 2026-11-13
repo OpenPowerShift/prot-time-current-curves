@@ -2756,8 +2756,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   });
 
   /* ticks */
-  /* `page { scale { tick_density } }`: sparse | normal | dense. */
-  const tickDensity = opts.page?.scale?.tick_density ?? 'normal';
+  /* A view setting; the page form is read only until a study is migrated. */
+  const tickDensity = opts.view?.tick_density ?? opts.page?.scale?.tick_density ?? 'normal';
   const xTicks = ticks(I_min, I_max, tickDensity);
   const yTicks = ticks(t_min, t_max, tickDensity);
   /*

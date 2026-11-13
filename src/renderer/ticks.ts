@@ -116,12 +116,19 @@ export function ticks(xMin: number, xMax: number, density: TickDensity): Tick[] 
       const v = decade * m;
       if (v < xMin || v > xMax) continue;
       out.push({ value: v, major: false, label: '' });
-      if (density === 'dense') {
-        for (const sub of [1.5, 2.5, 3.5, 5, 7.5]) {
-          const sv = decade * sub;
-          if (sv < xMin || sv > xMax) continue;
-          out.push({ value: sv, major: false, label: '' });
-        }
+    }
+    /*
+     * The dense overlay, once per decade. It used to sit inside the
+     * 2..9 loop, so each overlay tick was emitted eight times -- and
+     * its 5x duplicated the labelled 5x minor, so "500 A" was printed
+     * nine times over itself and the axis looked mislabelled. The
+     * overlay only adds the half-steps the 1..9 ruling does not have.
+     */
+    if (density === 'dense') {
+      for (const sub of [1.5, 2.5, 3.5, 4.5, 7.5]) {
+        const sv = decade * sub;
+        if (sv < xMin || sv > xMax) continue;
+        out.push({ value: sv, major: false, label: '' });
       }
     }
   }
@@ -136,5 +143,13 @@ export function ticks(xMin: number, xMax: number, density: TickDensity): Tick[] 
     out.push({ value: xMax, major: true, label: '' });
   }
 
-  return out.sort((a, b) => a.value - b.value);
+  /* One tick per value: an endpoint promoted above may coincide with a minor one. */
+  const seen = new Set<number>();
+  return out.sort((a, b) => a.value - b.value || Number(b.major) - Number(a.major))
+    .filter((t) => {
+      const key = Number(t.value.toPrecision(12));
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }

@@ -51,11 +51,11 @@ describe('page.curves', () => {
   });
 });
 
-describe('page.scale', () => {
+describe('view.tick_density', () => {
   it('thins the grid at sparse density', () => {
-    const sparse = (render('scale { tick_density = "sparse"; }').match(/tc-grid/g) ?? []).length;
-    const normal = (render('scale { tick_density = "normal"; }').match(/tc-grid/g) ?? []).length;
-    expect(sparse).toBeLessThan(normal);
+    const sheet = (d: string): number => (parseAndRender(
+      `${BASE}\nview { tick_density = "${d}"; }`, { theme: 'light' }).svg.match(/tc-grid/g) ?? []).length;
+    expect(sheet('sparse')).toBeLessThan(sheet('normal'));
   });
 });
 
@@ -194,5 +194,15 @@ describe('page { stretch }', () => {
     const off = plotRect(study('size = "A4"; orientation = "portrait"; stretch = false;'));
     const absent = plotRect(study('size = "A4"; orientation = "portrait";'));
     expect(off.h).toBe(absent.h);
+  });
+});
+
+describe('dense ticks', () => {
+  it('emit each value once, so no axis label is printed over itself', async () => {
+    const { ticks } = await import('@tc/renderer/ticks');
+    const values = ticks(50, 30_000, 'dense').map((t) => t.value);
+    expect(new Set(values).size).toBe(values.length);
+    expect(values).toContain(150);
+    expect(values.filter((v) => v === 500)).toHaveLength(1);
   });
 });

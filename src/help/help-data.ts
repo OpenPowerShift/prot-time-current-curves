@@ -162,6 +162,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   'view.voltage': M('view', 'Voltage frame for the rendered plot. Named level or "<n> kV" or "pickup".', 'voltage = "HV";'),
   axis:        M('view', 'Axis mode: primary, secondary, or multiples.', 'axis = "primary";'),
   nudge_px:    M('view', 'This sheet\'s separation between coincident curves, overriding page { curves { nudge_px } }. 0 draws them on top of one another.', 'nudge_px = 0;'),
+  tick_density: M('view', 'Minor gridlines per decade on this sheet: sparse (decades only), normal (1-9), dense. With the axis limits, one of the view\u2019s axis settings.', 'tick_density = "dense";'),
   second_axis: M('view', 'A second current scale across the top, in another voltage level\'s amps. Ampere-turns referral is a uniform map, so it is the same pixels relabelled -- no curve moves.', 'second_axis = HV;'),
   reference_ct:M('view', 'Curve whose CT anchors the secondary axis.', 'reference_ct = R_FDR:51;'),
   'view.stages': M('view', 'Composite (default) renders the pointwise-min of all stages; individual draws each.', 'stages = "composite";'),
@@ -202,7 +203,6 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   curves:      M('page', 'How the characteristics are drawn as a set: which palette, the default line weight, and how far apart coincident curves are pulled. An individual curve overrides the first two.', 'curves = { palette = "okabe_ito"; line_width_px = 2.0; };'),
   points:      M('page', 'Default marker style for every `point` on the sheet. A point may override any of it.', 'points = { shape = "circle"; size_px = 9; outline = true; };'),
   leaders:     M('page', 'Leader lines from a legend swatch or an annotation to the curve it names.', 'leaders = { show = true; style = "arrow"; };'),
-  scale:       M('page', 'An explicit axis window, replacing the automatic fit. `auto = false` is what makes the bounds binding.', 'scale = { auto = false; x_min = 100; x_max = 40000; };'),
   title:       M('page', 'Sheet heading. A bare string, or a block carrying a subtitle, colour, alignment and size.', 'title = { text = "Northgate 33/11 kV"; subtitle = "Feeder grading"; };'),
 
   /* Keys inside those blocks. */
@@ -374,11 +374,11 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
   view:        ['name', 'default', 'voltage', 'axis', 'quantity', 'condition',
                'title', 'subtitle',
                'second_axis', 'nudge_px', 'reference_ct', 'stages',
-               'current_min', 'current_max', 'time_min', 'time_max',
+               'current_min', 'current_max', 'time_min', 'time_max', 'tick_density',
                'current_pad', 'current_pad_low', 'current_pad_high',
                'time_pad', 'time_pad_low', 'time_pad_high', 'comment'],
   page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
-               'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders',
+               'margins_mm', 'legend', 'axes', 'curves', 'points', 'leaders',
                'faults', 'times', 'currents'],
   /* The rule-style sub-blocks share one vocabulary. Keyed by path so
    * they are not mistaken for the top-level blocks of the same name. */

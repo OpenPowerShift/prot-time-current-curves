@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parse } from '@tc/parser';
+import { parse, migrate } from '@tc/parser';
 import { process, renderStudy } from '@tc/index';
 import { formatGradeReports } from '@tc/semantics/grades';
 
@@ -99,27 +99,17 @@ describe('notes', () => {
   });
 });
 
-describe('the page scale window', () => {
-  /* Judged only where the window is actually used: with `auto` left on
-   * the declared bounds are ignored, so an inverted pair is harmless. */
-  it('accepts one declared the right way round', () => {
-    expect(codes(`${SYS}page { scale = { auto = false; x_min = 100; x_max = 10000;
-      y_min = 0.02; y_max = 100; }; }`)).not.toContain('PAGE_SCALE_INVERTED');
-  });
-
-  it('refuses a current window declared backwards', () => {
-    expect(codes(`${SYS}page { scale = { auto = false; x_min = 10000; x_max = 100; }; }`))
-      .toContain('PAGE_SCALE_INVERTED');
-  });
-
-  it('refuses a time window declared backwards', () => {
-    expect(codes(`${SYS}page { scale = { auto = false; y_min = 100; y_max = 0.02; }; }`))
-      .toContain('PAGE_SCALE_INVERTED');
-  });
-
-  it('ignores an inverted window while auto is on', () => {
-    expect(codes(`${SYS}page { scale = { x_min = 10000; x_max = 100; }; }`))
-      .not.toContain('PAGE_SCALE_INVERTED');
+describe('the page scale block', () => {
+  /*
+   * Removed: its bounds were validated and never read, so a study that
+   * set them was drawn auto-fitted. Axis limits and tick density are
+   * the view's, and `migrate` moves them there.
+   */
+  it('is refused, with the move to the view as its fix', () => {
+    const r = parse(`${SYS}page { scale = { auto = false; x_min = 100 A; tick_density = "dense"; }; }`);
+    const e = r.errors.find((x) => x.code === 'REMOVED_KEY');
+    expect(e?.message).toMatch(/set on the view/);
+    expect(migrate(`${SYS}page { scale = { x_min = 100 A; }; }`).text).toMatch(/view \{\n  current_min = 100 A;\n\}/);
   });
 });
 
