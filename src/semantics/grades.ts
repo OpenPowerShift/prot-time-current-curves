@@ -15,7 +15,7 @@
  *              as a gap; only acted on when a `solve` block says so.
  */
 
-import { tTripFlex } from './curves.js';
+import { tTripFlex, beyondCutoff } from './curves.js';
 import { solveGrade, type SolveResult } from './solver.js';
 import { controllingStage, cutoffOf, tTripElement } from './stages.js';
 import { faultCurrentAt } from './xvoltage.js';
@@ -625,7 +625,7 @@ function refuseBeyondCutoff(
 ): boolean {
   let refused = false;
   for (const [side, I] of at) {
-    if (side.cutoff_A == null || I <= side.cutoff_A) continue;
+    if (side.cutoff_A == null || !beyondCutoff(I, side.cutoff_A)) continue;
     refused = true;
     const already = diagnostics.some(
       (d) => d.code === 'GRADE_BEYOND_CUTOFF' && d.message.startsWith(`${side.ref} stops`),

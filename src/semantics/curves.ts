@@ -57,6 +57,20 @@ export function tTripIDMT(M: number, p: IecParams, tms: number): number {
 }
 
 /** Definite time: operates after a fixed delay once above pickup. */
+/**
+ * Past a cutoff, which is inclusive: a stage operates *at* its
+ * `I_cutoff` and not above it.
+ *
+ * Compared with a relative tolerance because the currents arriving
+ * here are computed -- a log-spaced sweep ends at `exp(log(9000))`,
+ * which is 9000.000000000004 -- and an exact comparison dropped the
+ * stage at its own cutoff, so a grade at exactly 9 kA reported two
+ * different margins for the same current.
+ */
+export function beyondCutoff(I: number, cutoff: number): boolean {
+  return I > cutoff * (1 + 1e-9);
+}
+
 export function tTripDefinite(I: number, I_pu: number, t_delay_s: number): number {
   return I >= I_pu ? t_delay_s : Infinity;
 }
@@ -154,7 +168,7 @@ export function tTripStage(stage: Stage, I_total: number, sharePct?: number): nu
    * stage time -- composite, grading, solver, hover -- gets the same
    * answer.
    */
-  if (stage.I_cutoff_A != null && I_total > stage.I_cutoff_A) return Infinity;
+  if (stage.I_cutoff_A != null && beyondCutoff(I_total, stage.I_cutoff_A)) return Infinity;
 
   /*
    * `sharePct` overrides the element's own `share`.

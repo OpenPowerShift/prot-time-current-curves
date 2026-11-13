@@ -280,7 +280,8 @@ element-member  ::= name-asg
 
 (* Where this characteristic stops. An element or a stage says it;
    a `view` says `current_max`, which is an axis bound and a different
-   thing. *)
+   thing. Inclusive: the stage operates at I_cutoff and not above it,
+   so a grade at exactly that current is graded with the stage present. *)
 I_cutoff-asg ::= "I_cutoff" "=" number current-unit ";" ;
 
 (* How one characteristic is stroked, overriding the sheet's palette
