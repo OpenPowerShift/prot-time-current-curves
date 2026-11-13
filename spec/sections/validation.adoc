@@ -89,7 +89,7 @@ Keying it on the namespace string rejects a legal dial of 3.0 on
   (`FAULT_OPTIONAL_NO_GRADE_CHECK`); the block renders but no
   margin is computed.
 . *A `grade` block with both `margin_target` and `margin` declared
-  where `margin_s < CTI_min_s`.* *Error* (the design target asks for
+  where `margin_target < margin`.* *Error* (the design target asks for
   less margin at the declared fault current than the engineering
   constraint allows). The engineer's expectation must be consistent.
 . *A `grade` block with a `solve` block but neither `margin_target` nor
@@ -139,7 +139,7 @@ Keying it on the namespace string rejects a legal dial of 3.0 on
 . *An element's `I_pickup` in primary amps below 5% of the relay's
   voltage base (computed as `base_MVA / V_kV / sqrt(3)`).*
   *Warning* (`PICKUP_TOO_LOW_FOR_VOLTAGE`); this is often a
-  unit error (`I_pu = 720 A` instead of `I_pu = 7.20 kA`).
+  unit error (`I_pickup = 720 A` instead of `I_pickup = 7.20 kA`).
 . *A `voltage` reference (in `relay.voltage`, `fault.voltage`,
   or other) that does not resolve to a level in
   `system.voltages`.* *Error* with a "did you mean"
@@ -167,9 +167,6 @@ Keying it on the namespace string rejects a legal dial of 3.0 on
 . *A `relay` without `ct_ratio` when any element declares
   `I_units = "secondary"`.* *Error* (`CT_RATIO_MISSING`); a setting
   in secondary amps cannot be converted without one.
-. *A `fault` with only `I` declared (no `I_min` / `I_max`).*
-  *Info* (`FAULT_SINGLE_POINT`); `I_min` and `I_max` default to
-  `I`.
 . *A `solve` block on a multi-stage backup whose controlling
   stage is definite-time.* *Warning* (`SOLVER_NO_IDMT_STAGE`);
   the solver falls back to reporting the existing margin.
@@ -234,7 +231,7 @@ leaves an unrecognised suffix alone rather than guessing, so `4 KA` was
 read as 4 A and `60 msec` as 60 seconds. Suffixes are case-sensitive.
 Checked against the union of every suffix rather than the one the field
 expects, so a suffix that is real but wrong for its quantity
-(`I_pu = 5 ms`) is not yet caught.
+(`I_pickup = 5 ms`) is not yet caught.
 
 === Condition references
 
@@ -298,7 +295,7 @@ disappeared from the study rather than being reported.
 [NOTE]
 ====
 An editor may hold `MISSING_VALUE` back on the line the caret is
-sitting on: `I_pu = ` is not a mistake at the moment the `=` is
+sitting on: `I_pickup = ` is not a mistake at the moment the `=` is
 typed. The finding is deferred, not dropped, and appears as soon as
 the caret moves off the line. The playground does this; the CLI
 reports every occurrence.

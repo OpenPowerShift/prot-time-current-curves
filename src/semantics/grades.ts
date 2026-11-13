@@ -1435,8 +1435,8 @@ export function formatGradeReport(report: GradeReport): string {
     return out.join('\n');
   }
 
-  if (report.CTI_min_s != null) out.push(`    CTI_min         = ${s3(report.CTI_min_s)}`);
-  if (report.margin_s != null) out.push(`    target margin   = ${s3(report.margin_s)}`);
+  if (report.CTI_min_s != null) out.push(`    margin          = ${s3(report.CTI_min_s)}`);
+  if (report.margin_s != null) out.push(`    margin_target   = ${s3(report.margin_s)}`);
 
   if (declared) {
     /*
@@ -1519,7 +1519,7 @@ export function formatGradeReport(report: GradeReport): string {
       );
       const failures = finite.filter((r) => r.pass === false).length;
       if (failures > 0) {
-        out.push(`        ${failures} of ${finite.length} swept points fall below CTI_min`);
+        out.push(`        ${failures} of ${finite.length} swept points fall below margin`);
       }
     }
   }

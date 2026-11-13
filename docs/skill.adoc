@@ -538,8 +538,6 @@ what they mean when they appear.
                                 across a transformer whose windings do
                                 not settle how. Declare the
                                 `vector_group`, or use a `scenario`.
-| `FAULT_SINGLE_POINT` | Informational: one fault current, so no range
-                         was swept. Fine if that is all the report gave.
 |===
 
 A study that grades *fail* is not a broken study. It is the answer.

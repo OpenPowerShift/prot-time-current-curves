@@ -621,8 +621,8 @@ function validateScenarios(ctx: Ctx): void {
         level.I0_A, level.earth_A, level.loc);
 
       for (const [field, value] of [
-        ['I_A', level.I_A], ['I1_A', level.I1_A], ['I2_A', level.I2_A],
-        ['I0_A', level.I0_A], ['earth_A', level.earth_A],
+        ['I', level.I_A], ['I1', level.I1_A], ['I2', level.I2_A],
+        ['I0', level.I0_A], ['residual', level.earth_A],
       ] as Array<[string, number | undefined]>) {
         if (value != null && (!Number.isFinite(value) || value < 0)) {
           add(ctx, 'FAULT_CURRENT_INVALID', 'error',
@@ -727,7 +727,7 @@ function validateFaults(ctx: Ctx): void {
     }
     if (!(fault.I_A > 0)) {
       add(ctx, 'FAULT_CURRENT_INVALID', 'error',
-        `fault ${fault.id} declares I_A = ${fault.I_A}; it must be strictly positive`,
+        `fault ${fault.id} declares I = ${fault.I_A}; it must be strictly positive`,
         fault.loc);
     }
 
@@ -795,21 +795,9 @@ function validateFaults(ctx: Ctx): void {
       }
     }
 
-    /*
-     * Said only when the condition really is one point. A study that
-     * declared its range in a component rather than in phase used to
-     * be told it had none.
-     */
-    const anyRange = Object.values(fault.range)
-      .some((v) => v != null && Number.isFinite(v));
-    if (!anyRange && fault.min_A === fault.I_A && fault.max_A === fault.I_A) {
-      add(ctx, 'FAULT_SINGLE_POINT', 'info',
-        `fault ${fault.id} declares only I_A; min_A and max_A default to it`,
-        fault.loc);
-    }
     if (fault.min_A > fault.max_A) {
       add(ctx, 'FAULT_RANGE_INVERTED', 'error',
-        `fault ${fault.id} has min_A (${fault.min_A}) above max_A (${fault.max_A})`,
+        `fault ${fault.id} has I_min (${fault.min_A}) above I_max (${fault.max_A})`,
         fault.loc);
     }
   }
@@ -937,7 +925,7 @@ function validateElements(ctx: Ctx): void {
         if (prior && prior !== element.id) {
           add(ctx, 'DUPLICATE_ELEMENT', 'error',
             `relay ${relay.id} declares elements ${prior} and ${element.id} with the same ` +
-            `(I_pu, tms, curve, measured current) -- they would double-trip identically`,
+            `(I_pickup, tms, curve, measured current) -- they would double-trip identically`,
             element.node.loc, element.id.length);
         } else if (!prior) {
           seen.set(key, element.id);
@@ -1082,7 +1070,7 @@ function validateStage(
   /* ---- pickup ----------------------------------------------------- */
   if (stage.I_pu_declared != null && !(stage.I_pu_declared > 0)) {
     add(ctx, 'PICKUP_NOT_POSITIVE', 'error',
-      `${where} declares I_pu = ${stage.I_pu_declared}; it must be strictly positive`,
+      `${where} declares I_pickup = ${stage.I_pu_declared}; it must be strictly positive`,
       loc);
   }
   /*
@@ -1167,7 +1155,7 @@ function validateStage(
   /* ---- current share ---------------------------------------------- */
   if (!(stage.current_pct > 0 && stage.current_pct <= 100)) {
     add(ctx, 'CURRENT_PCT_OUT_OF_RANGE', 'error',
-      `${where} declares current_pct = ${stage.current_pct}; the accepted range is (0, 100]`,
+      `${where} declares share = ${stage.current_pct}; the accepted range is (0, 100]`,
       loc);
   }
 }

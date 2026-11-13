@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-137 codes.
+136 codes.
 
 === Lexing and parsing
 
@@ -132,7 +132,6 @@ each, most serious first.
 | `DUPLICATE_TIME` | error | Two required-clearance entries sharing an id.
 | `FAULT_CURRENT_INVALID` | error | A declared fault current that is not finite and positive.
 | `FAULT_RANGE_INVERTED` | error | A fault whose minimum is above its maximum.
-| `FAULT_SINGLE_POINT` | info | A fault stating one current, so its range endpoints default to it.
 | `FAULT_VOLTAGE_UNSPECIFIED` | error | A fault with no voltage level in a study that declares several.
 | `POINT_CURRENT_AND_CONDITION` | error | A marked point stating its own current and naming a condition; they are alternatives.
 | `POINT_CURRENT_INVALID` | error | A marked point with no current, or one that is not positive.

@@ -69,14 +69,13 @@ describe('a range declared in the component', () => {
       .toHaveLength(2);
   });
 
-  it('does not report the condition as a single point', () => {
-    expect(codes('type = two_phase; I = 2 kA; I2 = 500 A; I2_min = 300 A; I2_max = 900 A;'))
-      .not.toContain('FAULT_SINGLE_POINT');
-  });
-
-  it('still reports a genuine single point', () => {
-    expect(codes('type = two_phase; I = 2 kA; I2 = 500 A;'))
-      .toContain('FAULT_SINGLE_POINT');
+  it('says nothing about a condition that declares one current', () => {
+    /*
+     * A single `I` is a complete declaration. It used to be reported
+     * on every fault -- in field names the language does not have --
+     * which pushed authors into ranges they had no figures for.
+     */
+    expect(codes('type = two_phase; I = 2 kA; I2 = 500 A;')).toEqual([]);
   });
 });
 

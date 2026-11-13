@@ -1910,7 +1910,6 @@ that relay's own winding.
 | `ZERO_DELAY_NOT_PLOTTABLE` | warning | `t_delay = 0 s`, which has no log-axis position; drawn at 20 ms instead.
 | `GRADE_MIXED_QUANTITY` | warning | The two sides of a grade measure different currents. Legitimate, but stated.
 | `RELAY_VOLTAGE_UNSPECIFIED` | warning | A relay has no `voltage` in a study with several levels.
-| `FAULT_SINGLE_POINT` | info | Only `I` given, so `I_min` and `I_max` default to it.
 |===
 
 == Writing a study from scratch

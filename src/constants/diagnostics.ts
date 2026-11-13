@@ -182,8 +182,6 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A declared fault current that is not finite and positive.' },
   FAULT_RANGE_INVERTED: { severity: ['error'],
     gloss: 'A fault whose minimum is above its maximum.' },
-  FAULT_SINGLE_POINT: { severity: ['info'],
-    gloss: 'A fault stating one current, so its range endpoints default to it.' },
   FAULT_VOLTAGE_UNSPECIFIED: { severity: ['error'],
     gloss: 'A fault with no voltage level in a study that declares several.' },
   RANGE_WITHOUT_CENTRE: { severity: ['error'],

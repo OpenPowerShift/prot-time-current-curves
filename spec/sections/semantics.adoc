@@ -1835,8 +1835,9 @@ it by the observed ratio gives 300 A, which is coherent with what the
 study says.
 
 A condition is swept when it declares a range in *any* component, not
-only in phase, and is reported as a single point only when it declares
-none.
+only in phase. A condition that declares no range is checked at its
+declared current alone; that is a complete declaration and is not
+reported.
 
 == Groups (protection chains)
 
