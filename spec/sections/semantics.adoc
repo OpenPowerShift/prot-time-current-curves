@@ -1395,11 +1395,10 @@ takes a particular shape.
 
 ==== Stage idempotency
 
-A stage with only a pickup and no curve is interpreted as a *purely
-definite-time* stage -- the curve degenerates to `t = 0` for
-`I >= I_pu` and `t = +inf` for `I < I_pu`. The stage must carry
-either an explicit `curve = definite` (prescribed) or `t_delay`
-(legacy), or the validator *errors out* (see
+A definite-time stage says so: `curve = definite` with its `t_delay`.
+A stage with a `t_delay` and no curve was the old spelling of the same
+thing; it is `REMOVED_KEY`, and the fix inserts `curve = definite;`.
+A stage with neither a curve nor a delay is an error (see
 <<validation,Validation>>).
 
 ==== Stage ordering and shading

@@ -159,8 +159,8 @@ Every field takes the unit from you, and checks it:
 ----
 system { voltages { "HV" { V = 33 kV; } } }
 faults  { "Bus max" { I = 6.4 kA; voltage = "HV"; } }
-relay R { element 51 { I_pickup = 480 A; tms = 0.3; t_delay = 60 ms; } }
-grade   { primary = R:51; backup = R_INC:51; margin = 0.3 s; }
+relay R { element 50 { curve = definite; I_pickup = 4.8 kA; t_delay = 60 ms; } }
+grade   { primary = R:50; backup = R_INC:51; margin = 0.3 s; }
 ----
 
 `I` is phase current, `I1` / `I2` / `I0` the components, `residual`

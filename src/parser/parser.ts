@@ -1706,9 +1706,43 @@ class Parser {
       return null;
     }
     this.expect('LBRACE', '{');
+    const bodyStart = this.pos;
     const el = this.parseElementBody(idTok.image, head);
+    this.noteLegacyDefinite(bodyStart, this.pos);
     this.expect('RBRACE', '}');
     return el;
+  }
+
+  /**
+   * A body with `t_delay` and no curve at all: the old way of writing a
+   * definite-time stage, which left the reader to infer the curve from
+   * the presence of a delay. Now `curve = definite;` says it, so there
+   * is one way to write one; the fix inserts it in front of the delay,
+   * which is exactly what the old form meant. An element with `stages`
+   * is not one of these: its `t_delay` is inherited by its stages.
+   */
+  private noteLegacyDefinite(from: number, to: number): void {
+    const keys = new Set<string>();
+    let delay: Token | undefined;
+    let depth = 0;
+    for (let i = from; i < to; i++) {
+      const t = this.tokens[i];
+      if (t.kind === 'LBRACE' || t.kind === 'LBRACK') depth++;
+      else if (t.kind === 'RBRACE' || t.kind === 'RBRACK') depth--;
+      else if (depth === 0 && (t.kind === 'KW' || t.kind === 'IDENT')
+        && (this.tokens[i + 1]?.kind === 'EQUALS' || t.image === 'stages')) {
+        keys.add(t.image);
+        if (t.image === 't_delay') delay = t;
+      }
+    }
+    if (!delay || ['curve', 'formula', 'flex_points', 'stages'].some((k) => keys.has(k))) return;
+    this.errors.push({
+      message: 'a delay with no curve was the old way to write a definite-time stage; '
+        + 'write curve = definite; beside the t_delay',
+      line: delay.line, column: delay.col, offset: delay.start, length: delay.image.length,
+      severity: 'error', code: 'REMOVED_KEY',
+      fix: [{ offset: delay.start, length: 0, text: 'curve = definite; ' }],
+    });
   }
 
   private parseElementBody(id: string, head: Token): ElementBlock {
@@ -1728,7 +1762,9 @@ class Parser {
           const stIdTok = this.parseDeviceNumberId();
           if (!stIdTok) continue;
           this.expect('LBRACE', '{');
+          const stStart = this.pos;
           const stBody = this.parseStageBody(stIdTok.image, stIdTok);
+          this.noteLegacyDefinite(stStart, this.pos);
           stages.push(stBody);
           this.expect('RBRACE', '}');
         }

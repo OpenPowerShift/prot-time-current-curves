@@ -147,3 +147,18 @@ describe('tc-curves migrate', () => {
     expect(await main(['migrate', p, '--check', '-q'])).toBe(0);
   });
 });
+
+describe('a delay with no curve', () => {
+  it('says curve = definite, which is what it always meant', () => {
+    const old = 'relay R { element 50 { I_pickup = 4 kA; t_delay = 50 ms; } }';
+    expect(parse(old).parseErrors.map((e) => e.code)).toContain('REMOVED_KEY');
+    expect(migrate(old).text).toBe('relay R { element 50 { I_pickup = 4 kA; curve = definite; t_delay = 50 ms; } }');
+  });
+
+  it('is not charged to an element whose stages inherit it', () => {
+    const src = `relay R { element 51 { t_delay = 300 ms; stages {
+      stage A { curve = iec.si; I_pickup = 400 A; tms = 0.1; }
+      stage B { curve = definite; I_pickup = 4 kA; } } } }`;
+    expect(migrate(src).changes).toEqual([]);
+  });
+});

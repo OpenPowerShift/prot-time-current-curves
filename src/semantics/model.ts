@@ -1455,8 +1455,10 @@ function resolveProducer(
   }
 
   /*
-   * Spec _Stage idempotency_: a stage carrying only `t_delay` is a
-   * legacy spelling of `curve = definite`.
+   * A stage carrying only `t_delay` was a legacy spelling of
+   * `curve = definite`. It is still read that way so an unmigrated
+   * study draws as it did, but the parser reports it (REMOVED_KEY) with
+   * `curve = definite;` as the rewrite.
    */
   if (declared('t_delay')) return { kind: 'definite' };
   return undefined;
