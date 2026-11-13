@@ -2961,6 +2961,8 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * wrote was being ignored.
    */
   const unanchoredTimes: string[] = [];
+  /** Captions whose anchor is outside the plotted currents. */
+  const offSheetTimes: string[] = [];
 
 
   /*
@@ -3029,6 +3031,23 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const timesOnPlot = times.filter((t) => t.t_s >= t_min && t.t_s <= t_max);
 
   /*
+   * Requirements at the same time are one rule.
+   *
+   * Two `times` entries at 750 ms -- a bus backup and a feeder backup,
+   * say -- drew the same full-width line twice, each with a caption of
+   * its own competing for the same few pixels. Grouped, the line is
+   * drawn once and its caption names both. Ordered top of the sheet
+   * first, which is the order their captions are placed in.
+   */
+  const timeGroups: Array<{ t_s: number; members: typeof timesOnPlot }> = [];
+  for (const t of timesOnPlot) {
+    const same = timeGroups.find((g) => Math.abs(g.t_s - t.t_s) <= 1e-9 * Math.max(1, t.t_s));
+    if (same) same.members.push(t);
+    else timeGroups.push({ t_s: t.t_s, members: [t] });
+  }
+  timeGroups.sort((a, b) => b.t_s - a.t_s);
+
+  /*
    * Held back and drawn after the curves.
    *
    * A required time is a limit the characteristics are being judged
@@ -3037,13 +3056,14 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * checking.
    */
   const timeRules: string[] = [];
-  for (const t of timesOnPlot) {
-    const py = yScale.toPx(t.t_s);
+  for (const group of timeGroups) {
+    const py = yScale.toPx(group.t_s);
     if (!Number.isFinite(py)) continue;
+    const names = group.members.map((t) => t.name).join(' / ');
     timeRules.push(
       `<line x1="${leftMargin}" y1="${py.toFixed(1)}" ` +
       `x2="${leftMargin + plotW}" y2="${py.toFixed(1)}" class="tc-time" ` +
-      `data-time-name="${escapeXml(t.name)}" data-time="${attrNum(t.t_s)}" ` +
+      `data-time-name="${escapeXml(names)}" data-time="${attrNum(group.t_s)}" ` +
       `stroke="${timeColour}" stroke-opacity="0.75" stroke-width="${timeWidth}"` +
       `${timeDash ? ` stroke-dasharray="${timeDash}"` : ''}/>`,
     );
@@ -3254,47 +3274,56 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const timeLabelLayer = openLayer('time-labels');
   if (opts.page?.times?.labels !== false) {
-    for (const t of timesOnPlot) {
-      const py = yScale.toPx(t.t_s);
+    /*
+     * One caption per rule, top of the sheet first.
+     *
+     * Requirements that share a time share a rule (see `timeGroups`),
+     * so their names share a caption -- two captions for one line were
+     * pushed apart by the placer and given leaders that crossed, and a
+     * reader followed the 200 ms name to the 500 ms rule. Placing in
+     * order of height, with the placer refusing a leader that crosses
+     * one already drawn, keeps the captions in the order of the rules.
+     */
+    for (const group of timeGroups) {
+      const py = yScale.toPx(group.t_s);
       if (!Number.isFinite(py)) continue;
-      const caption = opts.page?.times?.values === false ? t.name : `${t.name} · ${formatSi(t.t_s, 's')}`;
+      const names = group.members.map((t) => t.name).join(' / ');
+      const caption = opts.page?.times?.values === false
+        ? names : `${names} · ${formatSi(group.t_s, 's')}`;
+
       /*
        * `at_I` puts the caption where the reader is looking -- beside
        * the curve the clearance applies to, say -- instead of at the
-       * left-hand end, which is only ever a default. A figure outside
-       * the plotted currents would put the text off the sheet, so it
-       * falls back rather than drawing into the margin.
-       */
-      /*
-       * The anchor is read in the quantity the sheet is drawn in.
+       * left-hand end, which is only ever a default.
        *
+       * The anchor is read in the quantity the sheet is drawn in:
        * `at_I` alone means phase current, and on an `I2` or `3I0`
-       * abscissa that is a figure from a different axis -- so the
-       * caption sat beside a current that means nothing there.
-       * Naming the component (`at_I2`, `at_residual`) says which, on
-       * the same vocabulary a fault, a point and an annotate use.
+       * abscissa that is a figure from a different axis. Naming the
+       * component (`at_I2`, `at_residual`) says which.
+       *
+       * A group takes the first member's anchor that lands on the
+       * sheet. A declared anchor that cannot be read on this axis, or
+       * falls outside the plotted currents, leaves the caption at the
+       * left -- which looks deliberate, so it is said in the notes.
        */
-      const anchorI = resolveCurrent(viewQuantity, {
-        phase: t.at_I_A, I1: t.at_I1_A, I2: t.at_I2_A,
-        I0: t.at_I0_A, residual: t.at_earth_A,
-      }, t.type)?.value ?? null;
-
-      /*
-       * No anchor at all means the left-hand end, which is the
-       * documented default. An anchor that *was* given and could not
-       * be resolved onto this axis is a different thing: the caption
-       * lands at the default and looks deliberate, so it is said.
-       */
-      const anchorDeclared = t.at_I_A != null || t.at_I1_A != null || t.at_I2_A != null
-        || t.at_I0_A != null || t.at_earth_A != null;
-      if (anchorDeclared && anchorI == null) {
-        unanchoredTimes.push(t.name);
+      let anchorX: number | null = null;
+      for (const t of group.members) {
+        const anchorI = resolveCurrent(viewQuantity, {
+          phase: t.at_I_A, I1: t.at_I1_A, I2: t.at_I2_A,
+          I0: t.at_I0_A, residual: t.at_earth_A,
+        }, t.type)?.value ?? null;
+        const anchorDeclared = t.at_I_A != null || t.at_I1_A != null || t.at_I2_A != null
+          || t.at_I0_A != null || t.at_earth_A != null;
+        if (anchorDeclared && anchorI == null) {
+          unanchoredTimes.push(t.name);
+        } else if (anchorI != null && (anchorI < I_min || anchorI > I_max)) {
+          offSheetTimes.push(t.name);
+        } else if (anchorI != null && anchorX == null) {
+          anchorX = xScale.toPx(anchorI);
+        }
       }
 
-      const anchorX = anchorI != null && anchorI >= I_min && anchorI <= I_max
-        ? xScale.toPx(anchorI)
-        : leftMargin + 6;
-      out.push(...placeLabel(caption, { x: anchorX, y: py }, timeColour, {
+      out.push(...placeLabel(caption, { x: anchorX ?? leftMargin + 6, y: py }, timeColour, {
         prefer: ['above', 'below', 'right'],
         gap: 6,
       }));
@@ -4462,6 +4491,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
         `caption anchor not in ${quantityLabel(viewQuantity)}, drawn at the left: `
         + unanchoredTimes.join(', '),
       );
+    }
+    if (offSheetTimes.length > 0) {
+      /* Counted, not listed: the names are already in the legend's
+       * Times, and a list of them is what pushes a legend off the sheet. */
+      const n = offSheetTimes.length;
+      axisNotes.push(`${n} time ${n === 1 ? 'caption' : 'captions'} anchored off the `
+        + 'plotted currents, drawn at the left');
     }
     if (unplaceableAnnotations.length > 0) {
       axisNotes.push(
