@@ -222,7 +222,7 @@ describe('a number written without its unit', () => {
   it('says nothing about a field that has no quantity', () => {
     /* `tms` is a multiplier and `share` a percentage of a figure
      * already stated; neither has a unit to write. */
-    expect(codesFor(RELAY('element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.1; share = 50; }')))
+    expect(codesFor(RELAY('element 51 { curve = iec.si; I_pickup = 400 A; tms = 0.1; share = 50 %; }')))
       .not.toContain('UNIT_MISSING');
   });
 

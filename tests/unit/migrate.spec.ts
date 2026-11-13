@@ -49,6 +49,24 @@ describe('a renamed key', () => {
   });
 });
 
+describe('a percentage', () => {
+  it('states its unit, which a bare number always meant', () => {
+    expect(migrate('relay R { element 51 { curve = iec.si; I_pickup = 4 A; tms = 0.1; share = 50; } }').text)
+      .toContain('share = 50 %;');
+  });
+
+  it('turns tolerance_pct into tolerance with %', () => {
+    expect(migrate('grade { tolerance_pct = 5; solve { tolerance_pct = 2; } }').text)
+      .toBe('grade { tolerance = 5 %; solve { tolerance = 2 %; } }');
+  });
+
+  it('is an error until it is written with %', () => {
+    const codes = parse('relay R { element 51 { curve = iec.si; I_pickup = 4 A; tms = 0.1; share = 50; } }')
+      .parseErrors.map((e) => e.code);
+    expect(codes).toContain('UNIT_MISSING');
+  });
+});
+
 describe('a block inside a view', () => {
   const NESTED = [
     '# the phase sheet',

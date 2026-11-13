@@ -36,7 +36,7 @@ const INTERNAL = new RegExp(
     't_s', 't_delay_s', 'at_t_s', 'at_[A-Za-z0-9]+_A',
     'I_pu', 'I_pu_A', 'I_cutoff_A',
     'margin_s', 'CTI_min_s', 'CTI_min',
-    'current_pct',
+    'current_pct', 'tolerance_pct',
     'rating_A', 'rating_kV', 'rating_MVA',
   ].join('|')
   + ')\\b',

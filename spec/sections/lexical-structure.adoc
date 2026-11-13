@@ -117,7 +117,7 @@ color, style, width_px, view, views, comment
 maker, model, comment, description, reference
 
 *Inside `grade`* -- primary, backup, fault, scenario, margin,
-margin_target, tolerance_pct, upstream, upstream_to, comment, solve
+margin_target, tolerance, upstream, upstream_to, comment, solve
 
 *Inside `annotate`* -- on_curve, at_I, at_I1, at_I2, at_I0, at_residual,
 at_3I0, at_t, from, to, primary, backup, point, fault, faults, scenario,
@@ -170,7 +170,7 @@ grayscale, ieee, high_contrast
 
 *Themes* -- light, dark, monochrome, print
 
-*Solver (inside `grade.solve`)* -- solve, strategy, tolerance_pct,
+*Solver (inside `grade.solve`)* -- solve, strategy, tolerance,
 free, tight, loose, safety_factor
 
 *Function names* -- phase_oc, earth_fault, neg_seq, thermal,

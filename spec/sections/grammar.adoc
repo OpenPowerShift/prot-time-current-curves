@@ -360,13 +360,13 @@ grade-member    ::= "primary"   "=" ref ";"
                   | "fault"     "=" fault-ref ";"
                   | "margin" "=" number time-unit ";"
                   | "margin_target" "=" number time-unit ";"
-                  | "tolerance_pct" "=" number ";"
+                  | "tolerance" "=" number "%" ";"
                   | "comment"   "=" string ";"
                   | solve-block ;
 
 solve-block     ::= "solve" "{" { solve-member } "}" ;
 solve-member    ::= "strategy" "=" solve-strategy-keyword ";"
-                  | "tolerance_pct" "=" number ";"
+                  | "tolerance" "=" number "%" ";"
                   | "free" "=" "[" free-list "]" ";" ;
 free-list       ::= solve-free { "," solve-free } ;
 solve-free      ::= "tms" | "t_delay" | "I_pickup" ;
@@ -389,7 +389,7 @@ A `grade` block may carry *zero or more* of:
 * `margin` -- minimum acceptable margin (a *constraint*);
 * `margin_target` -- *exact* design margin at the declared fault (a
   *target*);
-* `tolerance_pct` (default 0) -- allowance above `margin_target` for the
+* `tolerance` (default 0) -- allowance above `margin_target` for the
   solver.
 
 When the `solve` block is present, the engineer has declared that the

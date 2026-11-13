@@ -263,7 +263,7 @@ describe('grade intent combinations', () => {
   it('rejects tolerance_pct outside [0, 50]', () => {
     const found = codes(`${RELAYS}
       grade { primary = R_A:51; backup = R_B:51; fault = "F1"; margin_target = 0.3 s;
-              solve { strategy = "loose"; tolerance_pct = 90; } }
+              solve { strategy = "loose"; tolerance = 90 %; } }
     `);
     expect(found.get('TOLERANCE_OUT_OF_RANGE')).toBe('error');
   });

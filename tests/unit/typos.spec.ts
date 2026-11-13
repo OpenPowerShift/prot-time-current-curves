@@ -41,7 +41,7 @@ describe('a misspelt setting', () => {
       'I_pickup = 400 A; tms = 0.1;',
       'I_pickup = 400 A; tms = 0.1; comment = "note";',
       'function = "phase_oc"; measures = "phase"; I_pickup = 400 A; tms = 0.1;',
-      'I_pickup = 400 A; tms = 0.1; I_cutoff = 20 kA; share = 50;',
+      'I_pickup = 400 A; tms = 0.1; I_cutoff = 20 kA; share = 50 %;',
       'I_pickup = 400 A; tms = 0.1; name = "Phase OC"; style = dashed;',
     ]) {
       expect(errorsIn(body), body).toEqual([]);

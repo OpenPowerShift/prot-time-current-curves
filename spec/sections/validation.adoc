@@ -94,7 +94,7 @@ Keying it on the namespace string rejects a legal dial of 3.0 on
   constraint allows). The engineer's expectation must be consistent.
 . *A `grade` block with a `solve` block but neither `margin_target` nor
   `margin`. The solver has no target at the declared fault.* *Error*.
-. *A `solve` block with `strategy = "loose"` and `tolerance_pct`
+. *A `solve` block with `strategy = "loose"` and `tolerance`
   outside `[0, 50]`.* *Error*.
 . *A `grade` block with `margin_target` declared but no `solve`
   block.* *Warning* (`MARGIN_NO_SOLVE`) -- the

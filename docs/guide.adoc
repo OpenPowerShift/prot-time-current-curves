@@ -790,7 +790,7 @@ grade {
     fault         = "F_lv_max";    # or scenario = "..."
     margin        = 0.30 s;          # constraint: minimum acceptable
     margin_target = 0.35 s;          # target: exact design margin
-    tolerance_pct = 5;
+    tolerance = 5 %;
     upstream      = true;          # also sweep above the declared fault
     upstream_to   = 20 kA;         # ceiling for that sweep
     comment       = "feeder against incomer";

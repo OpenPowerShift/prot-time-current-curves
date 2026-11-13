@@ -1465,7 +1465,7 @@ grade {
 
   solve {
     strategy = safety_factor;
-    tolerance_pct = 10;
+    tolerance = 10 %;
     comment = "what a 1.5x safety factor on the target would need";
   }
 }

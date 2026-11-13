@@ -511,7 +511,7 @@ of each combination:
 | present | absent | absent | Pass/fail grading check across the bus-fault range.
 | present | present | absent | `margin_target` reported as a target; `margin` enforced as a constraint at every fault current.
 | absent | present | absent | `margin_target` reported as a target at `fault`; no constraint. *Warning* (`SOMETHING-IS-MISSING`: margin_s declared without an action).
-| any | present | present | `solve` adjusts free variables to hit `margin_target` (within `tolerance_pct`); `margin` continues to act as a floor.
+| any | present | present | `solve` adjusts free variables to hit `margin_target` (within `tolerance`); `margin` continues to act as a floor.
 |===
 
 [NOTE]
@@ -539,7 +539,7 @@ grade {
 
     solve {
         strategy       = "tight";    // minimum tms that meets the margin
-        tolerance_pct  = 5;          // accept 5% overshoot above target
+        tolerance  = 5 %;          // accept 5% overshoot above target
     }
 }
 ----
@@ -599,7 +599,7 @@ processor stores it on the AST node as `tms = { value, source: "auto" }`.
 
 ==== Tolerance band
 
-`tolerance_pct` declares how much *overshoot above* the target the
+`tolerance` declares how much *overshoot above* the target the
 engineer will accept. It plays two distinct roles, and conflating
 them is the usual source of confusion:
 
@@ -682,7 +682,7 @@ grade {
     backup         = R_TRF_INC:51;
     fault          = "F_FDR1_max";
     margin_target  = 0.30 s;
-    tolerance_pct  = 5;
+    tolerance  = 5 %;
 
     solve {
         strategy = "tight";

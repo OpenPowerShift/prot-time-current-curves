@@ -55,7 +55,7 @@ grade {
 
     solve {
         strategy       = "tight";
-        tolerance_pct  = 0;
+        tolerance  = 0 %;
     }
 }
 `;
@@ -220,7 +220,7 @@ describe('solver edge cases', () => {
   });
 
   it('applies the tolerance band as an overshoot allowance', () => {
-    const tolerant = SOLVER_CASE.replace('tolerance_pct  = 0;', 'tolerance_pct  = 5;');
+    const tolerant = SOLVER_CASE.replace('tolerance  = 0 %;', 'tolerance  = 5 %;');
     const report = process(tolerant).reports[0];
     // target_margin = 0.30 * 1.05 = 0.315
     expect(Math.abs(report.solve!.target_t_backup_s! - (0.739 + 0.315))).toBeLessThanOrEqual(0.002);

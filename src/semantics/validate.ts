@@ -1431,7 +1431,7 @@ function validateGrades(ctx: Ctx): void {
       const tol = grade.solve.tolerance_pct;
       if (tol != null && (tol < 0 || tol > 50)) {
         add(ctx, 'TOLERANCE_OUT_OF_RANGE', 'error',
-          `solve declares tolerance_pct = ${tol}; the accepted range is [0, 50]`, loc);
+          `solve declares tolerance = ${tol} %; the accepted range is [0 %, 50 %]`, loc);
       }
       for (const free of grade.solve.free) {
         if (free !== 'tms' && free !== 't_delay' && free !== 'I_pickup') {

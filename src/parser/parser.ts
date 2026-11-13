@@ -87,7 +87,7 @@ function editDistance(a: string, b: string): number {
  * migrated value must now state.
  */
 export function unitOfOldKey(key: string): string | undefined {
-  if (key === 'current_pct') return undefined;
+  if (key === 'current_pct' || key === 'tolerance_pct') return '%';
   if (key === 'I_pu') return 'A';
   if (/_A$/.test(key)) return 'A';
   if (/_s$/.test(key)) return 's';
@@ -102,7 +102,7 @@ export const RENAMED_KEYS: Readonly<Record<string, string>> = {
   kV: 'V', t_s: 't',
   CTI_min_s: 'margin', margin_s: 'margin_target',
   I_pu: 'I_pickup', I_base_A: 'I_base', base_MVA: 'base_S',
-  current_pct: 'share',
+  current_pct: 'share', tolerance_pct: 'tolerance',
   at_I_A: 'at_I', at_I1_A: 'at_I1', at_I2_A: 'at_I2', at_I0_A: 'at_I0',
   at_earth_A: 'at_residual', at_t_s: 'at_t',
   rating_A: 'rating_I', rating_kV: 'rating_V', rating_MVA: 'rating_S',
@@ -249,7 +249,7 @@ export const KEYWORDS = new Set([
   'definite', 'formula', 'flex_points', 'curve', 't_r',
   // attribute keys
   'function', 'tms', 't_delay', 'I_units',
-  'tolerance_pct', 'upstream', 'upstream_to',
+  'tolerance', 'upstream', 'upstream_to',
   /* Units-everywhere names. No key carries its own unit. */
   'I', 'I_min', 'I_max', 'residual', 't', 'V',
   /*
@@ -703,7 +703,8 @@ class Parser {
       this.errors.push({
         message: `"${at.image}" was renamed to "${renamed}"; no key carries its own unit `
           + `any more, so write the unit yourself (${renamed} = `
-          + `${unit === 's' ? '0.3 s' : unit === 'kV' ? '33 kV' : unit === 'MVA' ? '25 MVA' : '450 A'})`,
+          + `${unit === 's' ? '0.3 s' : unit === 'kV' ? '33 kV' : unit === 'MVA' ? '25 MVA'
+            : unit === '%' ? '50 %' : '450 A'})`,
         line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
         severity: 'error', code: 'RENAMED_KEY',
         fix: this.renameFix(at, renamed, unit),
@@ -1304,7 +1305,7 @@ class Parser {
           const k = this.eat('KW') ?? this.eat('IDENT');
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
-          if (k.image === 'share') share.current_pct = this.parseNumber();
+          if (k.image === 'share') share.current_pct = this.parsePercent('share');
           else this.parseScalarValue();
           this.eat('SEMI');
         }
@@ -1932,6 +1933,12 @@ if (kwName === 'flex_points') {
        * It says how the curve is *drawn* rather than how the element
        * operates, which is the only thing that sets it apart.
        */
+      case 'share': {
+        const n = this.parsePercent('share');
+        this.eat('SEMI');
+        el.members.push({ kind: 'scalar', key: 'share', value: { kind: 'number', value: n, unit: '%' } });
+        return k.image;
+      }
       case 'function':
       case 'I_units':
       case 'style': {
@@ -2226,12 +2233,16 @@ if (kwName === 'flex_points') {
             g.upstream_to_A = this.parseNumberWithUnit_A('upstream_to');
             this.eat('SEMI');
             break;
+          case 'tolerance':
+            g.tolerance_pct = this.parsePercent('tolerance');
+            this.eat('SEMI');
+            break;
           case 'tolerance_pct':
-            {
-              const n = this.parseNumber();
-              this.eat('SEMI');
-              g.tolerance_pct = n;
-            }
+            /* Renamed; read as before so the study still grades, and
+             * reported with the rewrite (`tolerance = 5 %`). */
+            this.noteUnknownKey('a grade', k, []);
+            g.tolerance_pct = this.parseNumber();
+            this.eat('SEMI');
             break;
           case 'comment':
             {
@@ -2241,7 +2252,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance_pct', 'upstream', 'upstream_to', 'solve', 'comment']);
+            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance', 'upstream', 'upstream_to', 'solve', 'comment']);
             this.parseScalarValue();
             this.eat('SEMI');
         }
@@ -2267,7 +2278,10 @@ if (kwName === 'flex_points') {
             if (v) s.strategy = v as any;
           }
           break;
+        case 'tolerance':
+          s.tolerance_pct = this.parsePercent('tolerance'); this.eat('SEMI'); break;
         case 'tolerance_pct':
+          this.noteUnknownKey('a solve', k, []);
           s.tolerance_pct = this.parseNumber(); this.eat('SEMI'); break;
         case 'free':
           {
@@ -2287,7 +2301,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a solve', k, ['strategy', 'tolerance_pct', 'free', 'comment']);
+          this.noteUnknownKey('a solve', k, ['strategy', 'tolerance', 'free', 'comment']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -3327,6 +3341,37 @@ if (kwName === 'flex_points') {
     return this.parseNumberWithUnit(
       { s: 1, ms: 1e-3, min: 60, ks: 1e3 }, 'time', field);
   }
+  /**
+   * A percentage, written `50 %`.
+   *
+   * Percentages were bare numbers (`share = 50`) while every other
+   * quantity states its unit, and one key carried its unit in its name
+   * (`tolerance_pct`). A bare number is reported like any missing unit;
+   * it was always read as a percentage, so the fix is to say so, and
+   * `migrate` does.
+   */
+  private parsePercent(field: string): number {
+    const t = this.eat('NUMBER');
+    if (!t) {
+      this.errors.push({
+        message: `"${field}" expects a percentage, e.g. ${field} = 50 %`,
+        line: this.peek().line, column: this.peek().col,
+        offset: this.peek().start, length: 1,
+        severity: 'error', code: 'EXPECTED_NUMBER',
+      });
+      return NaN;
+    }
+    const n = Number(t.image.replace(/_/g, ''));
+    if (this.eat('PERCENT')) return n;
+    this.errors.push({
+      message: `"${field}" is a percentage; write it with % (${field} = ${t.image} %)`,
+      line: t.line, column: t.col, offset: t.start, length: t.image.length,
+      severity: 'error', code: 'UNIT_MISSING',
+      fix: [{ offset: tokenEnd(t), length: 0, text: ' %' }],
+    });
+    return n;
+  }
+
   private parseBool(): boolean {
     const v = this.matchKeyword('true','false');
     return v === 'true';

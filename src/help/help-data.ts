@@ -121,8 +121,8 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   scenarios:   M('annotate', 'Several conditions at once: drawn once per condition, each at its own current.', 'scenarios = ["system normal", "one tx out"];'),
   margin:   M('grade', 'The coordination margin this pair must achieve, as a floor. Was CTI_min_s; the unit is now yours to write.', 'margin = 0.30 s;'),
   margin_target:    M('grade', 'A margin to *hit*, for the solver, as opposed to `margin` which is a floor to satisfy.', 'margin_target = 0.30 s;'),
-  tolerance_pct: M('grade', 'Allowed slippage on margin_target for solve (default 0).', 'tolerance_pct = 5;'),
-  solve:       M('grade', 'Sub-block: directive to compute tms that hits the target.', 'solve { strategy = "tight"; tolerance_pct = 5; }'),
+  tolerance:   M('grade', 'Allowed overshoot above margin_target for solve, as a percentage (default 0 %).', 'tolerance = 5 %;'),
+  solve:       M('grade', 'Sub-block: directive to compute tms that hits the target.', 'solve { strategy = "tight"; tolerance = 5 %; }'),
 
   // grade -- the sweep
   upstream:    M('grade', 'Sweep the margin *above* the declared fault as well. On by default \u2014 grading that holds at the fault can still fail further up, where the two characteristics converge. Set false for a pair that cannot be driven above its fault, such as a fuse on a spur.', 'upstream = false;'),
@@ -368,8 +368,8 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views',
                'comment', 'description', 'reference'],
   grade:       ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target',
-               'tolerance_pct', 'upstream', 'upstream_to', 'solve', 'comment'],
-  solve:       ['strategy', 'tolerance_pct', 'free', 'comment'],
+               'tolerance', 'upstream', 'upstream_to', 'solve', 'comment'],
+  solve:       ['strategy', 'tolerance', 'free', 'comment'],
   view:        ['name', 'default', 'voltage', 'axis', 'quantity', 'condition',
                'title', 'subtitle',
                'second_axis', 'nudge_px', 'reference_ct', 'stages',

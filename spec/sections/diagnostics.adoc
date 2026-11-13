@@ -175,7 +175,7 @@ each, most serious first.
 | `SOLVER_NO_TARGET` | warning | The solver was given no finite margin to aim at.
 | `SOLVER_READONLY_DEVICE` | warning | The backup is a device, whose published curve is not adjustable.
 | `SOLVER_UNSATISFIABLE` | warning | The target needs a dial outside the settable range; the report says how far.
-| `TOLERANCE_OUT_OF_RANGE` | error | A `tolerance_pct` outside a sensible band.
+| `TOLERANCE_OUT_OF_RANGE` | error | A `tolerance` outside a sensible band.
 | `UPSTREAM_DISABLED_WITH_CEILING` | warning | An `upstream_to` ceiling on a pair whose sweep is switched off.
 | `UPSTREAM_RANGE_EMPTY` | warning | An upstream sweep whose ceiling is not above the declared fault.
 | `UPSTREAM_TO_INVALID` | error | An `upstream_to` ceiling that is not a positive current.
