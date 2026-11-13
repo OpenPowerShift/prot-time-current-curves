@@ -426,8 +426,10 @@ The ceiling is, in order of precedence:
 
 . `upstream_to`, when declared;
 . otherwise the largest fault declared at the *primary's own voltage
-  level*, or declaring no level -- the study's own statement of the
-  most severe current available there;
+  level*, or declaring no level, *in the quantity the primary
+  measures* -- residual for an earth element, `I2` for a
+  negative-sequence one, phase otherwise. A three-phase fault carries
+  no residual, so it sets no ceiling for an earth pair;
 . with a floor of `20 * I_pu_primary`, used only where no declared
   fault applies to the primary at all.
 
@@ -1530,9 +1532,15 @@ strip.
 
 `reference_ct` names the curve the axis is anchored to: its `ct_ratio`
 for `axis = "secondary"`, its pickup for `axis = "multiples"`. Omitted,
-the renderer takes the highest ratio (or the highest pickup) in the
-plot. Every curve still computes against its own; only the labelling
-uses the reference.
+the renderer takes the highest ratio (or the highest pickup) among the
+relays *on that sheet*; a secondary sheet with no relay carrying a CT
+says so in its notes and is drawn in primary amps. Every curve still
+computes against its own; only the labelling uses the reference.
+
+`current_min` / `current_max` are in the amps the axis shows: on a
+secondary sheet, secondary amps of the reference CT. A `multiples` axis
+has no amps of its own, so its bounds stay in primary amps. A curve
+with no part inside the window is named in the notes.
 
 == Page (layout / theme / legend / colours)
 

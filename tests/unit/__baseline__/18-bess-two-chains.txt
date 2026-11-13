@@ -307,15 +307,7 @@ backup clearance
 [legend] text 1126.0,677.0 class=tc-legend font-size=11 "660 V unbalanced backup clearance · 1 s"
 [legend] text 1126.0,693.0 class=tc-legend-muted font-size=10 "Connection agreement; three-phase exemption"
 [legend] text 1126.0,706.0 class=tc-legend-muted font-size=10 "noted"
-[legend] text 1090.0,739.0 class=tc-legend font-size=13 font-weight=600 "Notes"
-[legend] text 1090.0,759.0 class=tc-legend-muted font-size=10 font-style=italic "• drawn for BESS LV phase-phase minimum"
-[legend] text 1099.0,772.0 class=tc-legend-muted font-size=10 font-style=italic "(phase-phase)"
-[legend] text 1090.0,785.0 class=tc-legend-muted font-size=10 font-style=italic "• 33 kV incomer · Phase OC: phase drawn on the I2"
-[legend] text 1099.0,798.0 class=tc-legend-muted font-size=10 font-style=italic "axis, x0.578"
-[legend] text 1090.0,811.0 class=tc-legend-muted font-size=10 font-style=italic "• 33 kV BESS feeder · Phase OC: phase drawn on the"
-[legend] text 1099.0,824.0 class=tc-legend-muted font-size=10 font-style=italic "I2 axis, x0.578"
-[legend] text 1090.0,837.0 class=tc-legend-muted font-size=10 font-style=italic "• BESS transformer RMU · Phase OC: phase drawn on"
-[legend] text 1099.0,850.0 class=tc-legend-muted font-size=10 font-style=italic "the I2 axis, x0.578"
+[legend] text 1090.0,739.0 class=tc-legend-muted font-size=10 font-style=italic "• 5 notes omitted for space"
 
 === sheet: Auxiliary kiosk - phase ===
 viewBox 0 0 1400 970
@@ -631,3 +623,5 @@ domain-t 0.04,2
 [legend] text 1099.0,744.0 class=tc-legend-muted font-size=10 font-style=italic "on the I2 axis, x0.577"
 [legend] text 1090.0,757.0 class=tc-legend-muted font-size=10 font-style=italic "• Auxiliary kiosk RMU · Phase OC: phase drawn on"
 [legend] text 1099.0,770.0 class=tc-legend-muted font-size=10 font-style=italic "the I2 axis, x0.577"
+[legend] text 1090.0,783.0 class=tc-legend-muted font-size=10 font-style=italic "• outside the plotted currents and times: 33 kV"
+[legend] text 1099.0,796.0 class=tc-legend-muted font-size=10 font-style=italic "incomer · Phase OC"

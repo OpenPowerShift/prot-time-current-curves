@@ -280,7 +280,8 @@ element-member  ::= name-asg
 
 (* Where this characteristic stops. An element or a stage says it;
    a `view` says `current_max`, which is an axis bound and a different
-   thing. *)
+   thing. Inclusive: the stage operates at I_cutoff and not above it,
+   so a grade at exactly that current is graded with the stage present. *)
 I_cutoff-asg ::= "I_cutoff" "=" number current-unit ";" ;
 
 (* How one characteristic is stroked, overriding the sheet's palette
@@ -734,7 +735,11 @@ legend-member   ::= "show"      "=" boolean ";"
 text-lines      ::= string | "[" [ string { "," string } [ "," ] ] "]" ;
 (* Which amps the legend quotes a pickup in. Independent of
    `view { axis }`, which decides the abscissa; `secondary` and `both`
-   need the relay's `ct_ratio` and fall back to primary without one. *)
+   need the relay's `ct_ratio` and fall back to primary without one,
+   saying so in the notes. A relay's `ct_ratio` is otherwise optional:
+   it is required only for settings given in secondary amps
+   (CT_RATIO_MISSING), and a secondary-amps axis with no CT on its
+   sheet says so in its notes. A missing CT is never invented. *)
 legend-currents ::= "primary"    # as declared (default)
                   | "secondary"  # divided by ct_ratio
                   | "both" ;     # primary, with the secondary in brackets

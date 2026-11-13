@@ -68,6 +68,8 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A `t_floor` on a definite-time stage, whose time is its `t_delay`.' },
   DEVICE_BEYOND_TABLE: { severity: ['warning'],
     gloss: 'A grade reads a device past the last point of its published curve, where the time is held rather than known.' },
+  MISSING_SEMICOLON: { severity: ['warning'],
+    gloss: 'A statement with no `;` before the next one; the fix inserts it.' },
   GRADE_NOT_EVALUATED: { severity: ['warning'],
     gloss: 'A grade with no margin to judge it against, so it has no verdict; easy to mistake for a pass.' },
   GRADE_SHAPE: { severity: ['error'],

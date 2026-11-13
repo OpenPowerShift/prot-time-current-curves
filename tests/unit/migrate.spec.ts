@@ -162,3 +162,17 @@ describe('a delay with no curve', () => {
     expect(migrate(src).changes).toEqual([]);
   });
 });
+
+describe('a missing semicolon', () => {
+  it('is reported and inserted, before the next statement or the closing brace', () => {
+    const old = 'view V {\n  axis = secondary\n  current_min = 83 mA;\n}\ndevice D { kind = fuse; views = [ V ] }';
+    expect(parse(old).parseErrors.filter((e) => e.code === 'MISSING_SEMICOLON')).toHaveLength(2);
+    expect(migrate(old).text)
+      .toBe('view V {\n  axis = secondary;\n  current_min = 83 mA;\n}\ndevice D { kind = fuse; views = [ V ]; }');
+  });
+
+  it('is not asked for after a closing brace', () => {
+    expect(parse('page { legend { show = true; } axes { frame = true; } }').parseErrors
+      .map((e) => e.code)).not.toContain('MISSING_SEMICOLON');
+  });
+});

@@ -732,6 +732,13 @@ export interface CombineBlock extends BaseNode {
 
 export interface ViewBlock extends BaseNode {
   /**
+   * A zoom or pan window, in *primary* amps, set by the playground --
+   * never parsed. Kept apart from `current_min` / `current_max`, which
+   * the study writes in the units of the sheet's own axis (secondary
+   * amps on `axis = secondary`, multiples on `axis = multiples`).
+   */
+  zoom_A?: { min?: number; max?: number };
+  /**
    * Things declared inside this sheet.
    *
    * `times`, `point` and `annotate` may be written in a `view`, where
