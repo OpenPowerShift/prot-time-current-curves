@@ -23,6 +23,7 @@ import type {
   NotesBlock,
   PageBlock,
   PageTitle,
+  TextEdit,
   ParseError,
   ParseResult,
   Ref,
@@ -79,6 +80,20 @@ function editDistance(a: string, b: string): number {
     }
   }
   return row[b.length];
+}
+
+/**
+ * The unit an old unit-suffixed key carried in its name, which its
+ * migrated value must now state.
+ */
+export function unitOfOldKey(key: string): string | undefined {
+  if (key === 'current_pct') return undefined;
+  if (key === 'I_pu') return 'A';
+  if (/_A$/.test(key)) return 'A';
+  if (/_s$/.test(key)) return 's';
+  if (/(^|_)kV$/.test(key)) return 'kV';
+  if (/MVA$/.test(key)) return 'MVA';
+  return undefined;
 }
 
 export const RENAMED_KEYS: Readonly<Record<string, string>> = {
@@ -514,8 +529,12 @@ class Parser {
    * and a `.ptc` file with one stray brace listed the same complaint
    * two lines running.
    */
-  constructor(tokens: Token[], lexErrors: readonly ParseError[] = []) {
+  /** The source text, which a migration fix copies blocks out of. */
+  private readonly src: string;
+
+  constructor(tokens: Token[], lexErrors: readonly ParseError[] = [], src = '') {
     this.tokens = tokens;
+    this.src = src;
     this.errors.push(...lexErrors);
   }
 
@@ -653,17 +672,21 @@ class Parser {
         message: `"${at.image}" was renamed to "${reasoned.to}": ${reasoned.why}`,
         line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
         severity: 'error', code: 'RENAMED_KEY',
+        fix: [{ offset: at.start, length: at.end - at.start, text: reasoned.to }],
       });
       return;
     }
 
     const renamed = RENAMED_KEYS[at.image];
     if (renamed) {
+      const unit = unitOfOldKey(at.image);
       this.errors.push({
         message: `"${at.image}" was renamed to "${renamed}"; no key carries its own unit `
-          + `any more, so write the unit yourself (${renamed} = 450 A)`,
+          + `any more, so write the unit yourself (${renamed} = `
+          + `${unit === 's' ? '0.3 s' : unit === 'kV' ? '33 kV' : unit === 'MVA' ? '25 MVA' : '450 A'})`,
         line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
         severity: 'error', code: 'RENAMED_KEY',
+        fix: this.renameFix(at, renamed, unit),
       });
       return;
     }
@@ -702,6 +725,28 @@ class Parser {
       severity: isTypo ? 'error' : 'warning',
       code: isTypo ? 'UNKNOWN_SETTING' : 'UNKNOWN_KEY',
     });
+  }
+
+  /**
+   * Rename a key, and give its value the unit the old name carried.
+   *
+   * `I_A = 450;` meant 450 A; `I = 450;` is a missing-unit error. So
+   * the rewrite is the new name *and* the old name's unit -- only on a
+   * bare number, since a value that already has a suffix says what it
+   * means.
+   */
+  private renameFix(at: Token, to: string, unit: string | undefined): TextEdit[] {
+    const edits: TextEdit[] = [{ offset: at.start, length: at.end - at.start, text: to }];
+    if (!unit) return edits;
+    const i = this.tokens.findIndex((t) => t.start === at.start);
+    const eq = this.tokens[i + 1];
+    const num = this.tokens[i + 2];
+    const after = this.tokens[i + 3];
+    if (eq?.kind === 'EQUALS' && num?.kind === 'NUMBER'
+        && after && after.kind !== 'IDENT' && after.kind !== 'KW') {
+      edits.push({ offset: tokenEnd(num), length: 0, text: ` ${unit}` });
+    }
+    return edits;
   }
 
   /**
@@ -2545,6 +2590,9 @@ if (kwName === 'flex_points') {
       return null;
     }
 
+    /* Token spans of blocks nested in this view, for the removal fix. */
+    const nestedSpans: Array<{ first: number; last: number; scoped: boolean }> = [];
+
     const v = ((): ViewBlock => {
       const v: ViewBlock = { type: 'view', loc: this.loc(head) };
       if (nameTok) {
@@ -2576,7 +2624,15 @@ if (kwName === 'flex_points') {
           const block = t.image === 'times' ? this.parseTimes()
             : t.image === 'point' ? this.parsePoint()
               : this.parseAnnotate();
-          if (block) (v.nested ??= []).push(block);
+          if (block) {
+            (v.nested ??= []).push(block);
+            const entries: Array<{ views?: string[]; group?: string }> =
+              block.type === 'times' ? block.times : [block as { views?: string[] }];
+            nestedSpans.push({
+              first: before, last: this.pos - 1,
+              scoped: entries.some((e) => (e.views?.length ?? 0) > 0 || e.group != null),
+            });
+          }
           /* A block that refused to parse must not stall the loop. */
           if (this.pos === before) this.pos++;
           continue;
@@ -2717,7 +2773,41 @@ if (kwName === 'flex_points') {
     })();
 
     this.expect('RBRACE', '}');
+    const close = this.tokens[this.pos - 1];
+    for (const span of nestedSpans) this.noteNestedInView(span, nameTok, close);
     return v;
+  }
+
+  /**
+   * A block written inside a `view`, which is no longer how a sheet's
+   * items are declared: an item names its sheets with `views`, one way.
+   *
+   * The fix moves the block out to just after the view, with
+   * `views = [<this view>]` added to it (to each entry, for `times`) --
+   * exactly what the nested form was defined to mean, so the rewrite
+   * changes nothing that is drawn. A view with no id, or a nested block
+   * that also names a scope, has no meaning-preserving rewrite and is
+   * left to the author.
+   */
+  private noteNestedInView(
+    span: { first: number; last: number; scoped: boolean },
+    viewName: Token | null,
+    close: Token | undefined,
+  ): void {
+    const first = this.tokens[span.first];
+    const sheet = viewName?.image ?? '<this view>';
+    const err: ParseError = {
+      message: `${/^[aeiou]/.test(first.image) ? 'an' : 'a'} ${first.image} block inside a view `
+        + 'was removed; declare it at the top '
+        + `level with views = [${sheet}]`,
+      line: first.line, column: first.col, offset: first.start, length: first.end - first.start,
+      severity: 'error', code: 'REMOVED_KEY',
+    };
+    if (viewName && close?.kind === 'RBRACE' && !span.scoped) {
+      err.fix = hoistFromView(
+        this.src, this.tokens, span.first, span.last, tokenEnd(close), viewName.image);
+    }
+    this.errors.push(err);
   }
 
   /** Token `n` positions ahead, without consuming anything. */
@@ -3391,7 +3481,7 @@ function structuralErrors(tokens: Token[]): ParseError[] {
 
 export function parse(source: string): ParseResult {
   const { tokens, errors: lexErrors } = tokenize(source);
-  const parser = new Parser(tokens, lexErrors);
+  const parser = new Parser(tokens, lexErrors, source);
   const doc = parser.parseDocument();
   return {
     document: doc,
@@ -3402,6 +3492,79 @@ export function parse(source: string): ParseResult {
 
 export function lex(source: string) {
   return tokenize(source);
+}
+
+/**
+ * The edits that move a block nested in a view (tokens `first`..`last`)
+ * to the top level just after the view's closing brace at `viewEnd`,
+ * scoped to that view by name.
+ *
+ * Whole lines are moved where the block has them to itself, and the
+ * moved text is dedented by the block's own indent, so the result reads
+ * as if it had been written at the top level.
+ */
+/**
+ * Where a token ends, exclusive. `Token.end` is not that for every kind
+ * -- a one-character token has `end === start` -- so a rewrite that
+ * cuts or inserts at a token's far side measures it from its image.
+ */
+function tokenEnd(t: Token): number {
+  return t.start + t.image.length;
+}
+
+function hoistFromView(
+  src: string, tokens: Token[], first: number, last: number, viewEnd: number, viewName: string,
+): TextEdit[] {
+  const start = tokens[first].start;
+  const end = tokenEnd(tokens[last]);
+  const lineStart = src.lastIndexOf('\n', start - 1) + 1;
+  const ownsLineStart = /^[ \t]*$/.test(src.slice(lineStart, start));
+  const nl = src.indexOf('\n', end);
+  const lineEnd = nl === -1 ? src.length : nl + 1;
+  const ownsLineEnd = /^[ \t;]*\r?\n?$/.test(src.slice(end, lineEnd));
+  const cutFrom = ownsLineStart ? lineStart : start;
+  const cutTo = ownsLineEnd ? lineEnd : end;
+  const indent = ownsLineStart ? start - lineStart : 0;
+
+  /* Insert `views = [...]` after the brace that opens each entry. */
+  const inserts: Array<{ at: number; text: string }> = [];
+  let depth = 0;
+  const isTimes = tokens[first].image === 'times';
+  for (let i = first; i <= last; i++) {
+    const t = tokens[i];
+    if (t.kind === 'LBRACE') {
+      depth++;
+      if ((isTimes && depth === 2) || (!isTimes && depth === 1)) {
+        const at = tokenEnd(t);
+        const eol = src.indexOf('\n', at);
+        const rest = src.slice(at, eol === -1 ? src.length : eol);
+        if (eol !== -1 && /^[ \t]*\r?$/.test(rest)) {
+          /* The brace ends its line: match the indent of the line after. */
+          const ind = /^[ \t]*/.exec(src.slice(eol + 1))?.[0] ?? '';
+          inserts.push({ at, text: `\n${ind}views = [${viewName}];` });
+        } else {
+          inserts.push({ at, text: ` views = [${viewName}];` });
+        }
+      }
+    } else if (t.kind === 'RBRACE') {
+      depth--;
+    }
+  }
+
+  let moved = src.slice(start, end);
+  for (const ins of inserts.sort((a, b) => b.at - a.at)) {
+    const k = ins.at - start;
+    moved = moved.slice(0, k) + ins.text + moved.slice(k);
+  }
+  if (indent > 0) {
+    const pad = new RegExp(`\\n[ \\t]{0,${indent}}`, 'g');
+    moved = moved.replace(pad, '\n');
+  }
+
+  return [
+    { offset: cutFrom, length: cutTo - cutFrom, text: '' },
+    { offset: viewEnd, length: 0, text: `\n\n${moved}` },
+  ];
 }
 
 /**

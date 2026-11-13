@@ -13,7 +13,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { process as parse, renderStudy } from '@tc/index';
+import { process as parse, renderStudy, migrate } from '@tc/index';
 import { sheetsOf } from './sheets.js';
 
 const CHAINS = `
@@ -189,6 +189,11 @@ view SEQ { quantity = I2; condition = COND; voltage = HV;
 });
 
 describe('a block declared inside a view', () => {
+  /*
+   * Removed: an item names its sheets with `views`, one way. The
+   * nested form was defined to mean exactly that, so `migrate` rewrites
+   * it to that -- and the sheets come out the same.
+   */
   const NESTED = `
 system { voltages { HV { V = 33 kV; } } }
 relay R { voltage = HV; ct_ratio = 400/5;
@@ -208,47 +213,37 @@ view B {
 }
 `;
 
+  it('is refused, with a fix for each block', () => {
+    const removed = parse(NESTED).parseErrors.filter((e) => e.code === 'REMOVED_KEY');
+    expect(removed.map((e) => e.message)).toEqual([
+      'a times block inside a view was removed; declare it at the top level with views = [A]',
+      'a point block inside a view was removed; declare it at the top level with views = [A]',
+      'an annotate block inside a view was removed; declare it at the top level with views = [A]',
+    ]);
+    expect(removed.every((e) => e.fix && e.fix.length > 0)).toBe(true);
+  });
+
+  const migrated = migrate(NESTED).text;
+
   const drew = (sheet: string): string => {
-    const r = parse(NESTED);
+    const r = parse(migrated);
     expect(r.parseErrors).toEqual([]);
     const found = sheetsOf(r).find((s) => s.name === sheet)!;
     return renderStudy(r, { theme: 'light', view: found.view });
   };
 
-  it('belongs to that sheet and no other', () => {
-    /*
-     * For something on one sheet, a reference is a name kept in step
-     * for no reason. Written inside the view there is nothing to spell
-     * and nothing to rename, and being scoped elsewhere is not
-     * expressible.
-     */
+  it('migrates to the top level, still on that sheet and no other', () => {
+    expect(migrated).not.toMatch(/view A \{[^}]*times/);
     for (const mark of ['only on A', 'local marker', 'A only']) {
       expect(drew('A'), `A should carry ${mark}`).toContain(mark);
       expect(drew('B'), `B should not carry ${mark}`).not.toContain(mark);
     }
   });
 
-  it('is not listed in another sheet\'s legend as missing', () => {
-    /*
-     * A point scoped away from a sheet used to appear in that sheet's
-     * legend under "Points", as though it were a marker the sheet had
-     * failed to draw -- reporting an absence the study had asked for.
-     */
-    expect(drew('B')).not.toContain('local marker');
-  });
-
-  it('refuses to also name a scope', () => {
-    /*
-     * Already scoped by where it sits, so a `views` beside it is dead
-     * text that looks load-bearing. Refused rather than merged: two
-     * ways of saying the same thing would need a precedence rule.
-     */
+  it('is left to the author when it also names a scope', () => {
+    /* Two scopes have no meaning-preserving merge, so there is no fix. */
     const both = NESTED.replace('label = "A only";', 'label = "A only"; views = [B];');
-    const codes = parse(both).diagnostics.map((d) => d.code);
-    expect(codes).toContain('NESTED_BLOCK_SCOPED');
-  });
-
-  it('is clean when it does not', () => {
-    expect(parse(NESTED).diagnostics.map((d) => d.code)).not.toContain('NESTED_BLOCK_SCOPED');
+    const annotate = parse(both).parseErrors.find((e) => e.message.startsWith('an annotate block'));
+    expect(annotate?.fix).toBeUndefined();
   });
 });

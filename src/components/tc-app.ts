@@ -11,7 +11,7 @@
 
 import { LitElement, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { parse, type Document, type ParseError } from '../parser/index.js';
+import { parse, migrate, type Document, type ParseError } from '../parser/index.js';
 import { buildStudy, type Study } from '../semantics/model.js';
 import { viewLabel } from '../semantics/condition.js';
 import { validate, type Diagnostic } from '../semantics/validate.js';
@@ -372,7 +372,14 @@ export class TcApp extends LitElement {
       this.loadedSrc = named.source;
     }
 
-    const shared = sourceFromLink();
+    /*
+     * Anything that arrives from outside the build -- a link, a draft,
+     * a saved study, an opened file -- is brought up to the current
+     * language before it is shown. Old forms are rewritten in place,
+     * silently, where the rewrite preserves meaning (see `migrate`);
+     * the rest stay as errors for the author.
+     */
+    const shared = current(sourceFromLink());
     if (shared) {
       this.src = shared;
       this.loadedSrc = shared;
@@ -407,7 +414,7 @@ export class TcApp extends LitElement {
        */
       const draft = loadDraft();
       if (draft) {
-        this.src = draft.source;
+        this.src = current(draft.source)!;
         /*
          * The baseline for "unsaved" is what the draft's own study last
          * looked like, not the draft itself -- a draft *is* the
@@ -421,11 +428,11 @@ export class TcApp extends LitElement {
         if (draft.exampleId?.startsWith(SAVED_PREFIX)) {
           this.savedName = draft.exampleId.slice(SAVED_PREFIX.length);
           this.exampleId = draft.exampleId;
-          this.loadedSrc = studySource(this.savedName) ?? draft.source;
+          this.loadedSrc = current(studySource(this.savedName)) ?? this.src;
         } else {
           this.exampleId = draft.exampleId;
           const example = draft.exampleId ? EXAMPLES.find((e) => e.id === draft.exampleId) : undefined;
-          this.loadedSrc = example?.source ?? draft.source;
+          this.loadedSrc = example?.source ?? this.src;
         }
       }
     }
@@ -666,7 +673,7 @@ export class TcApp extends LitElement {
 
     if (value.startsWith(SAVED_PREFIX)) {
       const name = value.slice(SAVED_PREFIX.length);
-      const source = studySource(name);
+      const source = current(studySource(name));
       if (source == null) return;
       this.savedName = name;
       this.linkName = null;
@@ -831,7 +838,7 @@ export class TcApp extends LitElement {
       }
       const reader = new FileReader();
       reader.onload = () => {
-        const text = String(reader.result ?? '');
+        const text = current(String(reader.result ?? ''))!;
         this.src = text;
         this.loadedSrc = text;
         this.exampleId = null;
@@ -1375,6 +1382,16 @@ function studyName(source: string): string | null {
     }
   } catch { /* unparseable; it stays unnamed */ }
   return null;
+}
+
+/**
+ * A study from outside the build, in the current language.
+ *
+ * `undefined` / `null` pass through, so a missing link or draft stays
+ * missing rather than becoming an empty study.
+ */
+function current<T extends string | null | undefined>(source: T): T {
+  return (source == null ? source : migrate(source).text) as T;
 }
 
 /** localStorage key holding the Source/Plot layout choice. */

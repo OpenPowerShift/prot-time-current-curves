@@ -127,6 +127,7 @@ tc-curves report study.ptc              # margin report to stdout
 tc-curves render study.ptc --svg -o study.svg
 tc-curves render study.ptc --png -o study.png --width 1600
 tc-curves render study.ptc --pdf -o study.pdf
+tc-curves migrate study.ptc             # update old forms
 ----
 
 == Syntax essentials

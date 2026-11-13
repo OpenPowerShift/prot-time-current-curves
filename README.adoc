@@ -100,6 +100,7 @@ npx tc-curves render study.ptc --pdf --size A3 --landscape
 npx tc-curves report study.ptc              # margin report only
 npx tc-curves check  study.ptc              # diagnostics only
 npx tc-curves check  study.ptc --json       # machine-readable, for CI
+npx tc-curves migrate study.ptc             # rewrite old forms to current ones
 ----
 
 Exit status: `0` clean, `1` an error-severity finding, `2` usage or I/O
@@ -156,7 +157,7 @@ digest of the spec rather than a second copy of it.
 
 `docs/advanced.adoc`:: The *advanced guide*. What changes when a study
 stops being one sheet -- naming (handle, caption, prose), what appears
-on which sheet, protection chains, declaring a mark inside a view, and
+on which sheet, protection chains, scoping a mark to one sheet, and
 the rendered sheet as a document. Everything in it is drawn from
 `examples/18-bess-two-chains.ptc`, a two-chain study with four sheets.
 Read it when the guide's answers start being "it depends which sheet".

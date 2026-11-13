@@ -1207,6 +1207,20 @@ export interface ParseError {
   length: number;
   severity: 'error' | 'warning';
   code: string;
+  /**
+   * The rewrite that turns an old form into its current one, where the
+   * rewrite preserves meaning exactly. `migrate` applies these; an old
+   * form whose intent cannot be inferred carries none and stays an
+   * error for the author to resolve.
+   */
+  fix?: TextEdit[];
+}
+
+/** Replace `length` characters at `offset` with `text`. */
+export interface TextEdit {
+  offset: number;
+  length: number;
+  text: string;
 }
 
 export interface ParseResult {

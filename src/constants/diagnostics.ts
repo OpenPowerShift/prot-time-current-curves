@@ -64,8 +64,6 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'One key written twice in a block, where the second would silently win.' },
   VIEW_LISTS_ITEMS: { severity: ['error'],
     gloss: 'A view listing the items drawn on it; membership is stated on each item with `views`.' },
-  NESTED_BLOCK_SCOPED: { severity: ['error'],
-    gloss: 'A block appears inside another that does not contain it.' },
 
   /* ---- keys and values ------------------------------------------- */
   UNKNOWN_SETTING: { severity: ['error'],

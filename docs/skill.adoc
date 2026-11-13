@@ -411,19 +411,7 @@ view F2_PHASE { group = FEEDER_2; quantity = phase; title = "Feeder 2"; }
 A relay in both chains is drawn on both sheets -- an incomer backs up
 everything, so it belongs to every chain it is on.
 
-Items name their sheets (`views`); a view never lists its items.
-
-For a mark that belongs to exactly one sheet, write it inside the view
-rather than inventing a name to reference:
-
-[source,tc]
-----
-view F1_PHASE {
-    group = FEEDER_1;
-    quantity = phase;
-    times { T_LOCAL { name = "RMU limit"; t = 500 ms; at_I = 4 kA; } }
-}
-----
+Items name their sheets with `views`; a view never lists or contains them.
 
 [#marks]
 == 10. Marking the sheet: points and annotations

@@ -50,6 +50,16 @@ the Asciidoctor extension and the CLI both wrap.
 
 Renders an already-processed study to an SVG string.
 
+=== `migrate(source: string): { text, changes }`
+
+Rewrites old forms -- renamed keys, removed forms with an exact
+equivalent -- into current ones, and lists one line per rewrite. The
+rewrites come from the parser (`ParseError.fix`, a list of
+`{ offset, length, text }` edits), so every rule lives beside the
+diagnostic it fixes. Idempotent; text outside the rewritten forms,
+comments included, is untouched. An old form with no exact equivalent
+carries no fix and is left for the author.
+
 == Rendering
 
 === `renderSvg(doc: Document | undefined, opts: RenderOptions): string`

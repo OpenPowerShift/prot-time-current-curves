@@ -1878,39 +1878,13 @@ between two mechanisms that mean the same thing.
 
 === Declaring something for one sheet
 
-`times`, `point` and `annotate` may be written inside a `view`:
-
-[source,tc]
-----
-view BESS_I2 {
-    quantity = I2;
-
-    times { T_UNBALANCED { name = "660 V backup"; t = 1 s; at_I2 = 430 A; } }
-    annotate { from = 45 A; to = 154 A; at_t = 1 s; label = "46 window"; }
-}
-----
-
-It means exactly the same as declaring them at the top level with
-`views = [BESS_I2]`, and is resolved to that -- but there is no name to
-spell, no name to keep in step when the sheet is renamed, and being
-scoped somewhere else is not expressible.
-
-A nested block may not also carry `views` or `group`. It is already
-scoped by where it sits, so the second statement is dead text that
-looks load-bearing, and honouring both would need a precedence rule
-between two ways of saying one thing. It is an error.
-
-[IMPORTANT]
-====
-Only things that exist *to be drawn* may nest. A relay `element` may
-not: it is a real setting in a real device, it exists whether or not it
-is drawn, and nesting it would put one relay's settings in three
-places.
-
-The line is worth stating because it explains the asymmetry: things
-that exist in the world are declared where they live; things that exist
-only to be drawn may be declared on the drawing.
-====
+A mark for one sheet is scoped like any other item, with `views`.
+Blocks may not be written inside a `view`: `times`, `point` or
+`annotate` there is `REMOVED_KEY`. The nested form was defined to mean
+`views = [<that view>]` on the block (on each entry, for `times`), so
+the error carries that rewrite and `migrate` applies it. A nested block
+in a view with no id, or one that also names a scope, has no
+meaning-preserving rewrite and is left to the author.
 
 === What decides whether something is drawn
 

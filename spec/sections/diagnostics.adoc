@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-137 codes.
+136 codes.
 
 === Lexing and parsing
 
@@ -31,7 +31,6 @@ each, most serious first.
 | `EXPECTED_TOKEN` | error | A specific token was required here and something else was found.
 | `EXPECTED_TOP_LEVEL` | error | A top-level block was expected at this point in the file.
 | `MISSING_VALUE` | error | A key was written with `=` and no value after it.
-| `NESTED_BLOCK_SCOPED` | error | A block appears inside another that does not contain it.
 | `TOPLEVEL_PARSE` | error | A top-level block could not be parsed; its contents are skipped.
 | `UNEXPECTED_CHARACTER` | error | A character the lexer does not recognise anywhere in the language.
 | `UNKNOWN_TOP_LEVEL` | error | A top-level block whose keyword the language does not have.

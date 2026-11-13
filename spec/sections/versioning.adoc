@@ -23,6 +23,14 @@ version unchanged.
   new lints). Existing files still parse.
 * *Major* `0.2.0` (future) -- first potentially-breaking change.
 
+A key that is renamed, or a form that is removed, is reported
+(`RENAMED_KEY`, `REMOVED_KEY`) rather than silently accepted, so the
+language keeps one way to say each thing. Where the old form has an
+exact equivalent, the diagnostic carries the rewrite and a conforming
+processor offers to apply it (`tc-curves migrate`; the playground does
+so when a study is loaded). An old form whose meaning cannot be carried
+over exactly is left for the author.
+
 === Roadmap
 
 [cols="1,3", options="header"]
