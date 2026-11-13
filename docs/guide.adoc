@@ -804,7 +804,8 @@ transformer is referred to the other by the turns ratio, per relay.
 
 The upstream sweep runs by default: grading that holds at the declared
 fault can still fail further up, where two characteristics converge.
-Its ceiling is the largest fault at the primary's own level; a pair
+Its ceiling is the largest fault at the primary's own level, in the
+quantity it measures (residual for an earth pair); a pair
 that cannot reach it -- a spur fuse -- wants `upstream_to` or
 `upstream = false`.
 

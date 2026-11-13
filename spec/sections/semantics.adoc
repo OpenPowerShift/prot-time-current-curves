@@ -426,8 +426,10 @@ The ceiling is, in order of precedence:
 
 . `upstream_to`, when declared;
 . otherwise the largest fault declared at the *primary's own voltage
-  level*, or declaring no level -- the study's own statement of the
-  most severe current available there;
+  level*, or declaring no level, *in the quantity the primary
+  measures* -- residual for an earth element, `I2` for a
+  negative-sequence one, phase otherwise. A three-phase fault carries
+  no residual, so it sets no ceiling for an earth pair;
 . with a floor of `20 * I_pu_primary`, used only where no declared
   fault applies to the primary at all.
 

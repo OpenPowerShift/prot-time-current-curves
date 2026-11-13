@@ -643,16 +643,22 @@ function refuseBeyondCutoff(
   return refused;
 }
 
+/**
+ * The top of the upstream sweep, in the current the primary measures.
+ *
+ * The largest fault at the primary's level *in that quantity*: residual
+ * for a 3I0 element, I2 for a negative-sequence one, phase otherwise.
+ * It was the largest *phase* fault, carried across by the graded
+ * fault's ratio -- so an earth pair graded at 1.2 kA residual was swept
+ * up to the 7 kA phase fault as though 7 kA of residual could flow,
+ * and failed there. A three-phase fault carries no residual and so
+ * sets no ceiling for an earth element.
+ */
 function upstreamCeiling(
   study: Study,
-  grade: Grade,
   primary: Side,
   from: number,
 ): number {
-  if (grade.upstream_to_A != null && Number.isFinite(grade.upstream_to_A)) {
-    return grade.upstream_to_A;
-  }
-
   let declared = 0;
   for (const f of study.faults.values()) {
     /*
@@ -660,8 +666,8 @@ function upstreamCeiling(
      * at another level is somewhere else in the network.
      */
     if (f.voltage && primary.voltage && f.voltage !== primary.voltage) continue;
-    const projected = faultCurrentAt(study, f, primary.voltage, 'max').I_A;
-    if (Number.isFinite(projected) && projected > declared) declared = projected;
+    const seen = sideCurrentAt(study, f, primary, 'max').I_A;
+    if (seen != null && Number.isFinite(seen) && seen > declared) declared = seen;
   }
   /*
    * A declared ceiling at or below where the sweep starts is not an
@@ -1021,10 +1027,13 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
     const phaseHere = faultCurrentAt(study, fault, primary.voltage, 'max').I_A;
     const toSideUnits = phaseHere > 0 ? from / phaseHere : 1;
     const ends = [primary.cutoff_A, backup.cutoff_A].filter((x): x is number => x != null);
-    const to = Math.min(
-      upstreamCeiling(study, grade, primary, phaseHere) * toSideUnits,
-      ...ends,
-    );
+    /* An explicit `upstream_to` is a fault figure at the primary's level,
+     * carried into the side's quantity as before; the default ceiling
+     * is found in that quantity directly. */
+    const ceiling = grade.upstream_to_A != null && Number.isFinite(grade.upstream_to_A)
+      ? grade.upstream_to_A * toSideUnits
+      : upstreamCeiling(study, primary, from);
+    const to = Math.min(ceiling, ...ends);
     if (to > from) {
       const samples = 48;
       const lo = Math.log(from);

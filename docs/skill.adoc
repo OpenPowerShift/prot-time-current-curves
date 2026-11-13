@@ -342,10 +342,8 @@ faults {
 }
 ----
 
-The upstream sweep's ceiling is the largest fault at the primary's level
--- phase faults included -- so on an earth sheet give
-`upstream_to = <the earth-fault maximum>;` on the grade, or the sweep
-judges earth relays at a phase-fault current.
+The upstream sweep stops at the largest fault the relays measure: the
+largest residual for an earth pair, not the largest phase fault.
 
 [#sequence]
 == 6. Negative sequence
