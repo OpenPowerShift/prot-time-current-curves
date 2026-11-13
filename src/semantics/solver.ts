@@ -213,8 +213,8 @@ export function solveGrade(req: SolveRequest): SolveResult {
         margin_at_max_s: t_at_max - t_primary_s,
         suggestions: [
           'change the primary curve family (e.g. iec.si -> iec.vi)',
-          'increase I_pu of the primary',
-          'lower CTI to allow a tighter margin',
+          'increase I_pickup of the primary',
+          'lower margin to allow a tighter grading',
         ],
       },
     };

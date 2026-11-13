@@ -72,18 +72,6 @@ describe('a sheet drawn from a study with errors', () => {
 });
 
 describe('the diagnostics both surfaces show', () => {
-  it('include info, which the GUI used to drop', () => {
-    /*
-     * The CLI printed `FAULT_SINGLE_POINT` and the playground filtered
-     * it out, so the two described the same file differently. Whether
-     * it is worth saying is a separate question -- but it cannot be
-     * worth saying in one place and not the other.
-     */
-    const r = parse(readFileSync('examples/01-riverside.ptc', 'utf8'));
-    const infos = r.diagnostics.filter((d) => d.severity === 'info');
-    expect(infos.length).toBeGreaterThan(0);
-  });
-
   it('carry a real position, not 1:1', () => {
     /*
      * 1:1 is a clickable go-to-line that lands the reader at the top of

@@ -360,13 +360,13 @@ grade-member    ::= "primary"   "=" ref ";"
                   | "fault"     "=" fault-ref ";"
                   | "margin" "=" number time-unit ";"
                   | "margin_target" "=" number time-unit ";"
-                  | "tolerance_pct" "=" number ";"
+                  | "tolerance" "=" number "%" ";"
                   | "comment"   "=" string ";"
                   | solve-block ;
 
 solve-block     ::= "solve" "{" { solve-member } "}" ;
 solve-member    ::= "strategy" "=" solve-strategy-keyword ";"
-                  | "tolerance_pct" "=" number ";"
+                  | "tolerance" "=" number "%" ";"
                   | "free" "=" "[" free-list "]" ";" ;
 free-list       ::= solve-free { "," solve-free } ;
 solve-free      ::= "tms" | "t_delay" | "I_pickup" ;
@@ -389,7 +389,7 @@ A `grade` block may carry *zero or more* of:
 * `margin` -- minimum acceptable margin (a *constraint*);
 * `margin_target` -- *exact* design margin at the declared fault (a
   *target*);
-* `tolerance_pct` (default 0) -- allowance above `margin_target` for the
+* `tolerance` (default 0) -- allowance above `margin_target` for the
   solver.
 
 When the `solve` block is present, the engineer has declared that the
@@ -687,6 +687,9 @@ page-member     ::= "size"           "=" size-value ";"
                   | "curves"         "=" curves-block ";"
                   | "points"         "=" points-block ";"
                   | "leaders"        "=" leaders-block ";"
+                  | "faults"         "=" rule-style-block ";"
+                  | "times"          "=" rule-style-block ";"
+                  | "currents"       "=" rule-style-block ";"
                   | "title"          "=" title-block ";"
                   | "footer"         "=" footer-block ";"
                   | "theme"          "=" theme-keyword ";"
@@ -720,7 +723,7 @@ legend-member   ::= "show"      "=" boolean ";"
                   | "position"  "=" legend-position ";"
                   | "color"     "=" color-value ";"
                   | "swatch"    "=" legend-swatch-keyword ";"
-                  | "currents"  "=" legend-currents ";"
+                  | "I_units"   "=" legend-currents ";"
                   | "notes"     "=" boolean ";"
                   | "comment"   "=" text-lines ";"
                   | "title"     "=" string ";" ;
@@ -735,6 +738,17 @@ text-lines      ::= string | "[" [ string { "," string } [ "," ] ] "]" ;
 legend-currents ::= "primary"    # as declared (default)
                   | "secondary"  # divided by ct_ratio
                   | "both" ;     # primary, with the secondary in brackets
+(* The three kinds of rule a sheet draws -- fault currents, required
+   times, ratings -- each styled by a page block of its own name, with
+   one vocabulary. `labels` draws the names; `values` the figure beside
+   each. A sheet with a `second_axis` repeats only the figure above the
+   plot, under the scale it is in; the name is under the bottom axis. *)
+rule-style-block ::= "{" { rule-style-member } "}" ;
+rule-style-member ::= "width_px" "=" number ";"
+                  | "color"    "=" color-value ";"
+                  | "style"    "=" ( "solid" | "dashed" | "dotted" ) ";"
+                  | "labels"   "=" boolean ";"
+                  | "values"   "=" boolean ";" ;
 legend-style    ::= "column"    # default; a gutter down the right
                   | "inside"    # the same panel, floated on the plot
                   | "direct"    # no panel; each curve labelled in place

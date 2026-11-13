@@ -198,45 +198,31 @@ sheets says so with `views`.
 
 == Declaring something for one sheet
 
-For a mark that belongs to exactly one sheet, a reference is a name kept
-in step for no reason. Write it inside the view:
+A mark that belongs to one sheet is scoped like any other item, with
+`views`:
 
 [source,tc]
 ----
-view BESS_I2 {
-    quantity  = I2;
-    condition = BESS_LV_2PH_MIN;
-
-    times { T_UNBALANCED { name = "660 V backup"; t = 1 s; at_I2 = 430 A; } }
-    annotate { from = 45 A; to = 154 A; at_t = 1 s; label = "46 window"; }
-    point P_INRUSH { label = "inrush"; I2 = 300 A; t = 100 ms; }
-}
+times { T_UNBALANCED { name = "660 V backup"; t = 1 s; at_I2 = 430 A; views = [BESS_I2]; } }
+annotate { from = 45 A; to = 154 A; at_t = 1 s; label = "46 window"; views = [BESS_I2]; }
+point P_INRUSH { label = "inrush"; I2 = 300 A; t = 100 ms; views = [BESS_I2]; }
 ----
 
-This means exactly what declaring them at the top level with
-`views = [BESS_I2]` means, and resolves to that. The difference is that
-there is no name to spell, no name to keep in step when the sheet is
-renamed, and being scoped somewhere else is not expressible.
+=== Why nothing nests in a view
 
-A nested block may not also carry `views` or `group`. It is already
-scoped by where it sits, so the second statement is dead text that looks
-load-bearing. It is an error.
+A view never contains or lists its items. Writing `times`, `point` or
+`annotate` inside a `view`, or `currents = [...]` on one, is an error
+whose message gives the rewrite. The nested form used to be accepted
+and meant exactly `views = [<that view>]`, so `tc-curves migrate` -- or
+opening the file in the playground -- makes the rewrite for you.
 
-=== What may nest, and why not everything
+One rule applied everywhere is the point. A reader, or an agent writing
+the study, never has to ask which of two places a sheet's contents were
+declared in, and there is no precedence between them to learn.
 
-Only `times`, `point` and `annotate`.
-
-An `element` may not. A relay element is a real setting in a real
-device: it exists whether or not it is drawn, and nesting it would put
-one relay's settings in three places.
-
-The line is worth stating because it explains the asymmetry:
-
-[quote]
-____
-Things that exist in the world are declared where they live. Things that
-exist only to be drawn may be declared on the drawing.
-____
+An `element` never could nest, for a reason that still holds: things
+that exist in the world are declared where they live, and a relay
+element exists whether or not it is drawn.
 
 == Conditions across a transformer
 
@@ -417,5 +403,5 @@ jobs for whoever reads the status.
 . Scope a condition to the sheet it is the condition for.
 . Use `views` on an element only where the *quantity* differs from its
   chain — a 46 on a phase sheet, an incomer on a sequence sheet.
-. Write single-sheet marks inside the view.
+. Scope single-sheet marks with `views`, as everything else is.
 . Run `check --json` in CI and gate on exit `3` as well as `1`.

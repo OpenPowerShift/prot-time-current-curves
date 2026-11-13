@@ -680,6 +680,12 @@ export interface DeviceBlock extends BaseNode {
   comment?: string;
   description?: string;
   reference?: string;
+  /**
+   * Sheets this device is drawn on. Same meaning as an element's
+   * `views`: it overrides a sheet's `group`, and with neither the
+   * device is drawn everywhere.
+   */
+  views?: string[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -884,7 +890,7 @@ export interface PageLegend extends BaseNode {
    * `ct_ratio`; without one there is nothing to convert and the pickup
    * stays primary.
    */
-  currents?: LegendCurrents;
+  I_units?: LegendCurrents;
   /**
    * The author's own remarks, drawn at the foot of the panel.
    *
@@ -1015,9 +1021,24 @@ export interface PageFaults extends BaseNode {
    * is a band of numbers, and an office that quotes them in the
    * legend instead wants the band back.
    */
-  currents?: boolean;
+  values?: boolean;
   /** Draw the marker labels below the axis. Defaults to true. */
   labels?: boolean;
+}
+
+/**
+ * Styling for the vertical rules a `currents` block declares (ratings,
+ * load limits). The same keys as `PageFaults` and `PageTimes`: each
+ * kind of rule has a block of its own name with one vocabulary.
+ */
+export interface PageCurrents extends BaseNode {
+  width_px?: number;
+  color?: string;
+  style?: 'solid' | 'dashed' | 'dotted';
+  /** Draw the rule names below the axis. Defaults to true. */
+  labels?: boolean;
+  /** Print each figure beside its name. Defaults to true. */
+  values?: boolean;
 }
 
 /** Styling for the horizontal rules a `times` block declares. */
@@ -1027,6 +1048,8 @@ export interface PageTimes extends BaseNode {
   style?: 'solid' | 'dashed' | 'dotted';
   /** Draw the rule labels on the plot. Defaults to true. */
   labels?: boolean;
+  /** Print each time beside its name. Defaults to true. */
+  values?: boolean;
 }
 
 export interface PageBlock extends BaseNode {
@@ -1042,6 +1065,7 @@ export interface PageBlock extends BaseNode {
   leaders?: PageLeaders;
   faults?: PageFaults;
   times?: PageTimes;
+  currents?: PageCurrents;
   title?: string | PageTitle;
   footer?: PageFooter;
   theme?: 'light' | 'dark' | 'monochrome' | 'print';
@@ -1201,6 +1225,20 @@ export interface ParseError {
   length: number;
   severity: 'error' | 'warning';
   code: string;
+  /**
+   * The rewrite that turns an old form into its current one, where the
+   * rewrite preserves meaning exactly. `migrate` applies these; an old
+   * form whose intent cannot be inferred carries none and stays an
+   * error for the author to resolve.
+   */
+  fix?: TextEdit[];
+}
+
+/** Replace `length` characters at `offset` with `text`. */
+export interface TextEdit {
+  offset: number;
+  length: number;
+  text: string;
 }
 
 export interface ParseResult {

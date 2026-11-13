@@ -192,7 +192,7 @@ export const FIELD_QUANTITY: Readonly<Record<string, Quantity>> = {
   at_residual: 'current', at_3I0: 'current', rating_I: 'current',
 
   /* Times. */
-  t: 'time', t_delay: 'time', at_t: 'time',
+  t: 'time', t_delay: 'time', t_floor: 'time', at_t: 'time',
   margin: 'time', margin_target: 'time',
   time_min: 'time', time_max: 'time',
 

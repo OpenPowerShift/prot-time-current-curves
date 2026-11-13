@@ -45,13 +45,13 @@ describe('the current beside the name', () => {
   });
 
   it('can be turned off', () => {
-    const off = sheet(TWO, 'page { faults = { currents = false; }; }');
+    const off = sheet(TWO, 'page { faults = { values = false; }; }');
     expect(labels(off).map((l) => l.text)).toContain('Fault A');
     expect(labels(off).map((l) => l.text).join(' ')).not.toMatch(/·/);
   });
 
   it('leaves the names alone when it is off', () => {
-    const off = sheet(TWO, 'page { faults = { currents = false; }; }');
+    const off = sheet(TWO, 'page { faults = { values = false; }; }');
     expect(labels(off)).toHaveLength(2);
   });
 
@@ -91,7 +91,7 @@ describe('the packer', () => {
      * not, so the difference is visible in the row count.
      */
     expect(rowCount(sheet(TWO))).toBe(2);
-    expect(rowCount(sheet(TWO, 'page { faults = { currents = false; }; }'))).toBe(1);
+    expect(rowCount(sheet(TWO, 'page { faults = { values = false; }; }'))).toBe(1);
   });
 
   it('leaves no two captions overlapping on a row', () => {
@@ -216,7 +216,9 @@ describe('where the band sits', () => {
     expect(band.length, 'sample 10 should draw a top fault band').toBeGreaterThan(0);
 
     /* The topmost current-scale label above the plot. */
-    const ticks = [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)"[^>]*>([\d.]+ ?k?A)</g)]
+    /* Rule figures in the top band read like ticks now (the name is
+     * under the bottom axis only), so they are told apart by class. */
+    const ticks = [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)"(?![^>]*-label")[^>]*>([\d.]+ ?k?A)</g)]
       .map((m) => Number(m[1]))
       .filter((y) => y < top);
     expect(ticks.length, 'sample 10 should draw a second scale').toBeGreaterThan(0);

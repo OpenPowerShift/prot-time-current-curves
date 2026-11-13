@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-137 codes.
+138 codes.
 
 === Lexing and parsing
 
@@ -23,6 +23,7 @@ each, most serious first.
 |===
 | Code | Severity | Meaning
 
+| `DELAY_ON_INVERSE` | error | A `t_delay` declared on an inverse stage, whose time comes from its curve; use `t_floor` for a minimum time.
 | `DUPLICATE_KEY` | error | One key written twice in a block, where the second would silently win.
 | `EXPECTED_IDENT` | error | An identifier was required here -- a block id, or a key.
 | `EXPECTED_KEYWORD` | error | A keyword from a closed set was required and the word given is not in it.
@@ -30,13 +31,14 @@ each, most serious first.
 | `EXPECTED_NUMBER` | error | A number was required and the value given is not one.
 | `EXPECTED_TOKEN` | error | A specific token was required here and something else was found.
 | `EXPECTED_TOP_LEVEL` | error | A top-level block was expected at this point in the file.
+| `FLOOR_ON_DEFINITE` | error | A `t_floor` on a definite-time stage, whose time is its `t_delay`.
 | `MISSING_VALUE` | error | A key was written with `=` and no value after it.
-| `NESTED_BLOCK_SCOPED` | error | A block appears inside another that does not contain it.
 | `TOPLEVEL_PARSE` | error | A top-level block could not be parsed; its contents are skipped.
 | `UNEXPECTED_CHARACTER` | error | A character the lexer does not recognise anywhere in the language.
 | `UNKNOWN_TOP_LEVEL` | error | A top-level block whose keyword the language does not have.
 | `UNTERMINATED_BLOCK_COMMENT` | error | A `/* ... */` comment reaches the end of the file without closing.
 | `UNTERMINATED_STRING` | error | A quoted string reaches the end of the line without closing.
+| `VIEW_LISTS_ITEMS` | error | A view listing the items drawn on it; membership is stated on each item with `views`.
 |===
 
 === Keys and values
@@ -132,7 +134,6 @@ each, most serious first.
 | `DUPLICATE_TIME` | error | Two required-clearance entries sharing an id.
 | `FAULT_CURRENT_INVALID` | error | A declared fault current that is not finite and positive.
 | `FAULT_RANGE_INVERTED` | error | A fault whose minimum is above its maximum.
-| `FAULT_SINGLE_POINT` | info | A fault stating one current, so its range endpoints default to it.
 | `FAULT_VOLTAGE_UNSPECIFIED` | error | A fault with no voltage level in a study that declares several.
 | `POINT_CURRENT_AND_CONDITION` | error | A marked point stating its own current and naming a condition; they are alternatives.
 | `POINT_CURRENT_INVALID` | error | A marked point with no current, or one that is not positive.

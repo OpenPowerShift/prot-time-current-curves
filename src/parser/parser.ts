@@ -23,6 +23,7 @@ import type {
   NotesBlock,
   PageBlock,
   PageTitle,
+  TextEdit,
   ParseError,
   ParseResult,
   Ref,
@@ -81,13 +82,27 @@ function editDistance(a: string, b: string): number {
   return row[b.length];
 }
 
+/**
+ * The unit an old unit-suffixed key carried in its name, which its
+ * migrated value must now state.
+ */
+export function unitOfOldKey(key: string): string | undefined {
+  if (key === 'current_pct' || key === 'tolerance_pct') return '%';
+  if (key === 'I_pu') return 'A';
+  if (/_A$/.test(key)) return 'A';
+  if (/_s$/.test(key)) return 's';
+  if (/(^|_)kV$/.test(key)) return 'kV';
+  if (/MVA$/.test(key)) return 'MVA';
+  return undefined;
+}
+
 export const RENAMED_KEYS: Readonly<Record<string, string>> = {
   I_A: 'I', I1_A: 'I1', I2_A: 'I2', I0_A: 'I0', earth_A: 'residual',
   min_A: 'I_min', max_A: 'I_max',
   kV: 'V', t_s: 't',
   CTI_min_s: 'margin', margin_s: 'margin_target',
   I_pu: 'I_pickup', I_base_A: 'I_base', base_MVA: 'base_S',
-  current_pct: 'share',
+  current_pct: 'share', tolerance_pct: 'tolerance',
   at_I_A: 'at_I', at_I1_A: 'at_I1', at_I2_A: 'at_I2', at_I0_A: 'at_I0',
   at_earth_A: 'at_residual', at_t_s: 'at_t',
   rating_A: 'rating_I', rating_kV: 'rating_V', rating_MVA: 'rating_S',
@@ -122,8 +137,36 @@ export const RENAMED_WITH_REASON: Readonly<Record<string, { to: string; why: str
  * nothing like the office standard its author thought they had set, and
  * nothing anywhere said why.
  */
+/**
+ * Page settings renamed per block, keyed `block.old`.
+ *
+ * `currents` named two unrelated settings before the `currents { }`
+ * rating block existed -- which side of the CT the legend quotes, and
+ * whether a fault's figure is printed -- and then a third thing. Each
+ * now has a name of its own.
+ */
+export const PAGE_RENAMED: Readonly<Record<string, { to: string; why: string }>> = {
+  'legend.currents': {
+    to: 'I_units',
+    why: 'it chooses primary or secondary amps, which is what I_units means on an element',
+  },
+  'faults.currents': {
+    to: 'values',
+    why: '`currents` is the block of rating rules; `values` is the figure beside each name',
+  },
+};
+
+/**
+ * Keys `page` takes directly, as `key = value;`. Everything else in a
+ * page is one of the sub-blocks in `PAGE_SUB_FIELDS`.
+ */
+export const PAGE_TOP_KEYS: readonly string[] = [
+  'size', 'orientation', 'border', 'stretch', 'theme', 'watermark',
+  'title', 'footer', 'margins_mm',
+];
+
 export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'currents', 'notes',
+  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'I_units', 'notes',
     'comment'],
   axes: ['color', 'grid_color', 'grid_minor_color', 'grid_style', 'grid_minor_style',
     'label_color', 'label_size_px', 'tick_size_px', 'frame', 'mirror'],
@@ -132,8 +175,9 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
   leaders: ['show', 'style', 'width_px', 'color', 'label_offset_px'],
   scale: ['auto', 'x_min', 'x_max', 'y_min', 'y_max', 'tick_density'],
   margins_mm: ['top', 'right', 'bottom', 'left'],
-  faults: ['width_px', 'color', 'style', 'labels', 'currents'],
-  times: ['width_px', 'color', 'style', 'labels'],
+  faults: ['width_px', 'color', 'style', 'labels', 'values'],
+  times: ['width_px', 'color', 'style', 'labels', 'values'],
+  currents: ['width_px', 'color', 'style', 'labels', 'values'],
   footer: ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
 };
 
@@ -205,7 +249,7 @@ export const KEYWORDS = new Set([
   'definite', 'formula', 'flex_points', 'curve', 't_r',
   // attribute keys
   'function', 'tms', 't_delay', 'I_units',
-  'tolerance_pct', 'upstream', 'upstream_to',
+  'tolerance', 'upstream', 'upstream_to',
   /* Units-everywhere names. No key carries its own unit. */
   'I', 'I_min', 'I_max', 'residual', 't', 'V',
   /*
@@ -216,7 +260,7 @@ export const KEYWORDS = new Set([
    */
   'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max',
   'residual_min', 'residual_max',
-  'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target',
+  'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target', 't_floor',
   'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'at_t',
   'rating_I', 'rating_V', 'rating_S',
   /* Recognised only to be refused with the new spelling. */
@@ -505,8 +549,12 @@ class Parser {
    * and a `.ptc` file with one stray brace listed the same complaint
    * two lines running.
    */
-  constructor(tokens: Token[], lexErrors: readonly ParseError[] = []) {
+  /** The source text, which a migration fix copies blocks out of. */
+  private readonly src: string;
+
+  constructor(tokens: Token[], lexErrors: readonly ParseError[] = [], src = '') {
     this.tokens = tokens;
+    this.src = src;
     this.errors.push(...lexErrors);
   }
 
@@ -644,17 +692,22 @@ class Parser {
         message: `"${at.image}" was renamed to "${reasoned.to}": ${reasoned.why}`,
         line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
         severity: 'error', code: 'RENAMED_KEY',
+        fix: [{ offset: at.start, length: at.end - at.start, text: reasoned.to }],
       });
       return;
     }
 
     const renamed = RENAMED_KEYS[at.image];
     if (renamed) {
+      const unit = unitOfOldKey(at.image);
       this.errors.push({
         message: `"${at.image}" was renamed to "${renamed}"; no key carries its own unit `
-          + `any more, so write the unit yourself (${renamed} = 450 A)`,
+          + `any more, so write the unit yourself (${renamed} = `
+          + `${unit === 's' ? '0.3 s' : unit === 'kV' ? '33 kV' : unit === 'MVA' ? '25 MVA'
+            : unit === '%' ? '50 %' : '450 A'})`,
         line: at.line, column: at.col, offset: at.start, length: at.end - at.start,
         severity: 'error', code: 'RENAMED_KEY',
+        fix: this.renameFix(at, renamed, unit),
       });
       return;
     }
@@ -693,6 +746,28 @@ class Parser {
       severity: isTypo ? 'error' : 'warning',
       code: isTypo ? 'UNKNOWN_SETTING' : 'UNKNOWN_KEY',
     });
+  }
+
+  /**
+   * Rename a key, and give its value the unit the old name carried.
+   *
+   * `I_A = 450;` meant 450 A; `I = 450;` is a missing-unit error. So
+   * the rewrite is the new name *and* the old name's unit -- only on a
+   * bare number, since a value that already has a suffix says what it
+   * means.
+   */
+  private renameFix(at: Token, to: string, unit: string | undefined): TextEdit[] {
+    const edits: TextEdit[] = [{ offset: at.start, length: at.end - at.start, text: to }];
+    if (!unit) return edits;
+    const i = this.tokens.findIndex((t) => t.start === at.start);
+    const eq = this.tokens[i + 1];
+    const num = this.tokens[i + 2];
+    const after = this.tokens[i + 3];
+    if (eq?.kind === 'EQUALS' && num?.kind === 'NUMBER'
+        && after && after.kind !== 'IDENT' && after.kind !== 'KW') {
+      edits.push({ offset: tokenEnd(num), length: 0, text: ` ${unit}` });
+    }
+    return edits;
   }
 
   /**
@@ -1230,7 +1305,7 @@ class Parser {
           const k = this.eat('KW') ?? this.eat('IDENT');
           if (!k) { this.pos++; continue; }
           this.expect('EQUALS', '=');
-          if (k.image === 'share') share.current_pct = this.parseNumber();
+          if (k.image === 'share') share.current_pct = this.parsePercent('share');
           else this.parseScalarValue();
           this.eat('SEMI');
         }
@@ -1686,7 +1761,7 @@ if (kwName === 'flex_points') {
     if (!((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS')) return;
     this.noteUnknownKey(what, at, [
       'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-      'I_pickup', 'I_units', 'share', 'tms', 't_delay', 'comment', 'I_cutoff',
+      'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_floor', 'comment', 'I_cutoff',
       'color', 'style', 'width_px', 'view', 'views',
       ...(what === 'an element' ? ['stages'] : []),
     ], /* strict */ true);
@@ -1858,6 +1933,12 @@ if (kwName === 'flex_points') {
        * It says how the curve is *drawn* rather than how the element
        * operates, which is the only thing that sets it apart.
        */
+      case 'share': {
+        const n = this.parsePercent('share');
+        this.eat('SEMI');
+        el.members.push({ kind: 'scalar', key: 'share', value: { kind: 'number', value: n, unit: '%' } });
+        return k.image;
+      }
       case 'function':
       case 'I_units':
       case 'style': {
@@ -1877,7 +1958,7 @@ if (kwName === 'flex_points') {
          */
         this.noteUnknownKey('an element', k, [
           'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-          'I_pickup', 'I_units', 'share', 'tms', 't_delay',
+          'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_floor',
           'stages', 'comment', 'I_cutoff',
           /* How the curve is drawn, as opposed to how it operates. */
           'color', 'style', 'width_px',
@@ -2015,6 +2096,14 @@ if (kwName === 'flex_points') {
         case 'total_clear':
           d.total_clear = this.parseFlexList();
           break;
+        case 'view':
+        case 'views':
+          {
+            const names = this.parseNameList();
+            this.eat('SEMI');
+            if (names.length > 0) d.views = [...(d.views ?? []), ...names];
+          }
+          break;
         case 'voltage':
         case 'maker': case 'model': case 'description': case 'comment': case 'reference':
           {
@@ -2034,7 +2123,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'comment', 'description', 'reference']);
+          this.noteUnknownKey('a device', k, ['kind', 'voltage', 'maker', 'model', 'rating_I', 'rating_V', 'rating_S', 'flex_points', 'min_melt', 'total_clear', 't_delay', 'view', 'views', 'comment', 'description', 'reference']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -2144,12 +2233,16 @@ if (kwName === 'flex_points') {
             g.upstream_to_A = this.parseNumberWithUnit_A('upstream_to');
             this.eat('SEMI');
             break;
+          case 'tolerance':
+            g.tolerance_pct = this.parsePercent('tolerance');
+            this.eat('SEMI');
+            break;
           case 'tolerance_pct':
-            {
-              const n = this.parseNumber();
-              this.eat('SEMI');
-              g.tolerance_pct = n;
-            }
+            /* Renamed; read as before so the study still grades, and
+             * reported with the rewrite (`tolerance = 5 %`). */
+            this.noteUnknownKey('a grade', k, []);
+            g.tolerance_pct = this.parseNumber();
+            this.eat('SEMI');
             break;
           case 'comment':
             {
@@ -2159,7 +2252,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance_pct', 'upstream', 'upstream_to', 'solve', 'comment']);
+            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance', 'upstream', 'upstream_to', 'solve', 'comment']);
             this.parseScalarValue();
             this.eat('SEMI');
         }
@@ -2185,7 +2278,10 @@ if (kwName === 'flex_points') {
             if (v) s.strategy = v as any;
           }
           break;
+        case 'tolerance':
+          s.tolerance_pct = this.parsePercent('tolerance'); this.eat('SEMI'); break;
         case 'tolerance_pct':
+          this.noteUnknownKey('a solve', k, []);
           s.tolerance_pct = this.parseNumber(); this.eat('SEMI'); break;
         case 'free':
           {
@@ -2205,7 +2301,7 @@ if (kwName === 'flex_points') {
           }
           break;
         default:
-          this.noteUnknownKey('a solve', k, ['strategy', 'tolerance_pct', 'free', 'comment']);
+          this.noteUnknownKey('a solve', k, ['strategy', 'tolerance', 'free', 'comment']);
           this.parseScalarValue();
           this.eat('SEMI');
       }
@@ -2528,6 +2624,9 @@ if (kwName === 'flex_points') {
       return null;
     }
 
+    /* Token spans of blocks nested in this view, for the removal fix. */
+    const nestedSpans: Array<{ first: number; last: number; scoped: boolean }> = [];
+
     const v = ((): ViewBlock => {
       const v: ViewBlock = { type: 'view', loc: this.loc(head) };
       if (nameTok) {
@@ -2559,7 +2658,15 @@ if (kwName === 'flex_points') {
           const block = t.image === 'times' ? this.parseTimes()
             : t.image === 'point' ? this.parsePoint()
               : this.parseAnnotate();
-          if (block) (v.nested ??= []).push(block);
+          if (block) {
+            (v.nested ??= []).push(block);
+            const entries: Array<{ views?: string[]; group?: string }> =
+              block.type === 'times' ? block.times : [block as { views?: string[] }];
+            nestedSpans.push({
+              first: before, last: this.pos - 1,
+              scoped: entries.some((e) => (e.views?.length ?? 0) > 0 || e.group != null),
+            });
+          }
           /* A block that refused to parse must not stall the loop. */
           if (this.pos === before) this.pos++;
           continue;
@@ -2670,6 +2777,27 @@ if (kwName === 'flex_points') {
             v.isDefault = this.parseBool(); this.eat('SEMI'); break;
           case 'comment':
             v.comment = this.parseStringOrIdent(); this.eat('SEMI'); break;
+          case 'currents': case 'faults': case 'times': case 'devices':
+          case 'elements': case 'relays': case 'points': case 'annotations': {
+            /*
+             * Scoping runs one way: an item names the sheets it is on.
+             * A view listing its items was a second way to say the same
+             * thing -- and it was warned and dropped, so the ratings it
+             * listed appeared on every sheet.
+             */
+            const sheet = v.id ?? v.name ?? '<this view>';
+            const what = k.image.replace(/s$/, '');
+            const fix = k.image === 'relays'
+              ? `select a chain with group, or put views = ["${sheet}"] on each element`
+              : `put views = ["${sheet}"] on each ${what} instead`;
+            this.errors.push({
+              message: `a view does not list its ${k.image}; ${fix}`,
+              line: k.line, column: k.col, offset: k.start, length: k.end - k.start,
+              severity: 'error', code: 'VIEW_LISTS_ITEMS',
+            });
+            this.parseScalarValue(); this.eat('SEMI');
+            break;
+          }
           default:
             this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'nudge_px', 'reference_ct', 'comment']);
             this.parseScalarValue(); this.eat('SEMI');
@@ -2679,7 +2807,41 @@ if (kwName === 'flex_points') {
     })();
 
     this.expect('RBRACE', '}');
+    const close = this.tokens[this.pos - 1];
+    for (const span of nestedSpans) this.noteNestedInView(span, nameTok, close);
     return v;
+  }
+
+  /**
+   * A block written inside a `view`, which is no longer how a sheet's
+   * items are declared: an item names its sheets with `views`, one way.
+   *
+   * The fix moves the block out to just after the view, with
+   * `views = [<this view>]` added to it (to each entry, for `times`) --
+   * exactly what the nested form was defined to mean, so the rewrite
+   * changes nothing that is drawn. A view with no id, or a nested block
+   * that also names a scope, has no meaning-preserving rewrite and is
+   * left to the author.
+   */
+  private noteNestedInView(
+    span: { first: number; last: number; scoped: boolean },
+    viewName: Token | null,
+    close: Token | undefined,
+  ): void {
+    const first = this.tokens[span.first];
+    const sheet = viewName?.image ?? '<this view>';
+    const err: ParseError = {
+      message: `${/^[aeiou]/.test(first.image) ? 'an' : 'a'} ${first.image} block inside a view `
+        + 'was removed; declare it at the top '
+        + `level with views = [${sheet}]`,
+      line: first.line, column: first.col, offset: first.start, length: first.end - first.start,
+      severity: 'error', code: 'REMOVED_KEY',
+    };
+    if (viewName && close?.kind === 'RBRACE' && !span.scoped) {
+      err.fix = hoistFromView(
+        this.src, this.tokens, span.first, span.last, tokenEnd(close), viewName.image);
+    }
+    this.errors.push(err);
   }
 
   /** Token `n` positions ahead, without consuming anything. */
@@ -2699,9 +2861,26 @@ if (kwName === 'flex_points') {
     const accepts = PAGE_SUB_FIELDS[name] ?? [];
     const out: Record<string, PageSubValue> = {};
     while (!this.at('RBRACE') && !this.at('EOF')) {
-      const key = this.eat('KW') ?? this.eat('IDENT');
+      let key = this.eat('KW') ?? this.eat('IDENT');
       if (!key) { this.pos++; continue; }
-      if (accepts.length > 0) this.noteUnknownKey(`page ${name}`, key, accepts);
+      /*
+       * A rename that depends on the block: `currents` was the old name
+       * of two different settings, so the global rename table cannot
+       * say what it became. Read under the new name so the study still
+       * draws as it did; the error carries the rewrite.
+       */
+      const renamed = PAGE_RENAMED[`${name}.${key.image}`];
+      if (renamed) {
+        this.errors.push({
+          message: `"${key.image}" in page ${name} was renamed to "${renamed.to}": ${renamed.why}`,
+          line: key.line, column: key.col, offset: key.start, length: key.end - key.start,
+          severity: 'error', code: 'RENAMED_KEY',
+          fix: [{ offset: key.start, length: key.image.length, text: renamed.to }],
+        });
+        key = { ...key, image: renamed.to };
+      } else if (accepts.length > 0) {
+        this.noteUnknownKey(`page ${name}`, key, accepts);
+      }
       this.expect('EQUALS', '=');
 
       const t = this.peek();
@@ -2811,6 +2990,7 @@ if (kwName === 'flex_points') {
             p.size = this.parseSizeMm();
             continue;
           }
+          this.notePageKey(k, /* asBlock */ true);
           const fields = this.parsePageSubBlock(k.image);
           this.eat('SEMI');
           applyPageSubBlock(p, k.image, fields);
@@ -2937,14 +3117,42 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            // Other page members (scale, legend, axes, curves,
-            // points, leaders) are read into a placeholder.
+            this.notePageKey(k, /* asBlock */ false);
             this.parseScalarValue();
             this.eat('SEMI');
         }
       }
       return p;
     }, '}');
+  }
+
+  /**
+   * A `page` key that is not one of its own.
+   *
+   * These were read and dropped without a word, so `page { nudge_px = 0; }`
+   * looked like it worked and did nothing -- the setting lives in
+   * `page { curves { nudge_px } }`. Where the word belongs to one of the
+   * page's sub-blocks the message says which, because that is the
+   * mistake: the right key in the wrong place.
+   */
+  private notePageKey(k: Token, asBlock: boolean): void {
+    if (asBlock ? PAGE_SUB_FIELDS[k.image] : PAGE_TOP_KEYS.includes(k.image)) return;
+    const home = Object.entries(PAGE_SUB_FIELDS)
+      .filter(([, fields]) => fields.includes(k.image))
+      .map(([block]) => block);
+    if (!asBlock && home.length > 0) {
+      this.errors.push({
+        message: `the page does not accept "${k.image}" directly; it belongs in `
+          + home.map((b) => `${b} { ${k.image} }`).join(' or '),
+        line: k.line, column: k.col, offset: k.start, length: k.end - k.start,
+        severity: 'warning', code: 'UNKNOWN_KEY',
+      });
+      return;
+    }
+    this.noteUnknownKey('the page', k, [
+      ...PAGE_TOP_KEYS,
+      ...Object.keys(PAGE_SUB_FIELDS).filter((b) => !PAGE_TOP_KEYS.includes(b)).map((b) => `${b} { }`),
+    ]);
   }
 
   /**
@@ -3133,6 +3341,37 @@ if (kwName === 'flex_points') {
     return this.parseNumberWithUnit(
       { s: 1, ms: 1e-3, min: 60, ks: 1e3 }, 'time', field);
   }
+  /**
+   * A percentage, written `50 %`.
+   *
+   * Percentages were bare numbers (`share = 50`) while every other
+   * quantity states its unit, and one key carried its unit in its name
+   * (`tolerance_pct`). A bare number is reported like any missing unit;
+   * it was always read as a percentage, so the fix is to say so, and
+   * `migrate` does.
+   */
+  private parsePercent(field: string): number {
+    const t = this.eat('NUMBER');
+    if (!t) {
+      this.errors.push({
+        message: `"${field}" expects a percentage, e.g. ${field} = 50 %`,
+        line: this.peek().line, column: this.peek().col,
+        offset: this.peek().start, length: 1,
+        severity: 'error', code: 'EXPECTED_NUMBER',
+      });
+      return NaN;
+    }
+    const n = Number(t.image.replace(/_/g, ''));
+    if (this.eat('PERCENT')) return n;
+    this.errors.push({
+      message: `"${field}" is a percentage; write it with % (${field} = ${t.image} %)`,
+      line: t.line, column: t.col, offset: t.start, length: t.image.length,
+      severity: 'error', code: 'UNIT_MISSING',
+      fix: [{ offset: tokenEnd(t), length: 0, text: ' %' }],
+    });
+    return n;
+  }
+
   private parseBool(): boolean {
     const v = this.matchKeyword('true','false');
     return v === 'true';
@@ -3324,7 +3563,7 @@ function structuralErrors(tokens: Token[]): ParseError[] {
 
 export function parse(source: string): ParseResult {
   const { tokens, errors: lexErrors } = tokenize(source);
-  const parser = new Parser(tokens, lexErrors);
+  const parser = new Parser(tokens, lexErrors, source);
   const doc = parser.parseDocument();
   return {
     document: doc,
@@ -3335,6 +3574,79 @@ export function parse(source: string): ParseResult {
 
 export function lex(source: string) {
   return tokenize(source);
+}
+
+/**
+ * The edits that move a block nested in a view (tokens `first`..`last`)
+ * to the top level just after the view's closing brace at `viewEnd`,
+ * scoped to that view by name.
+ *
+ * Whole lines are moved where the block has them to itself, and the
+ * moved text is dedented by the block's own indent, so the result reads
+ * as if it had been written at the top level.
+ */
+/**
+ * Where a token ends, exclusive. `Token.end` is not that for every kind
+ * -- a one-character token has `end === start` -- so a rewrite that
+ * cuts or inserts at a token's far side measures it from its image.
+ */
+function tokenEnd(t: Token): number {
+  return t.start + t.image.length;
+}
+
+function hoistFromView(
+  src: string, tokens: Token[], first: number, last: number, viewEnd: number, viewName: string,
+): TextEdit[] {
+  const start = tokens[first].start;
+  const end = tokenEnd(tokens[last]);
+  const lineStart = src.lastIndexOf('\n', start - 1) + 1;
+  const ownsLineStart = /^[ \t]*$/.test(src.slice(lineStart, start));
+  const nl = src.indexOf('\n', end);
+  const lineEnd = nl === -1 ? src.length : nl + 1;
+  const ownsLineEnd = /^[ \t;]*\r?\n?$/.test(src.slice(end, lineEnd));
+  const cutFrom = ownsLineStart ? lineStart : start;
+  const cutTo = ownsLineEnd ? lineEnd : end;
+  const indent = ownsLineStart ? start - lineStart : 0;
+
+  /* Insert `views = [...]` after the brace that opens each entry. */
+  const inserts: Array<{ at: number; text: string }> = [];
+  let depth = 0;
+  const isTimes = tokens[first].image === 'times';
+  for (let i = first; i <= last; i++) {
+    const t = tokens[i];
+    if (t.kind === 'LBRACE') {
+      depth++;
+      if ((isTimes && depth === 2) || (!isTimes && depth === 1)) {
+        const at = tokenEnd(t);
+        const eol = src.indexOf('\n', at);
+        const rest = src.slice(at, eol === -1 ? src.length : eol);
+        if (eol !== -1 && /^[ \t]*\r?$/.test(rest)) {
+          /* The brace ends its line: match the indent of the line after. */
+          const ind = /^[ \t]*/.exec(src.slice(eol + 1))?.[0] ?? '';
+          inserts.push({ at, text: `\n${ind}views = [${viewName}];` });
+        } else {
+          inserts.push({ at, text: ` views = [${viewName}];` });
+        }
+      }
+    } else if (t.kind === 'RBRACE') {
+      depth--;
+    }
+  }
+
+  let moved = src.slice(start, end);
+  for (const ins of inserts.sort((a, b) => b.at - a.at)) {
+    const k = ins.at - start;
+    moved = moved.slice(0, k) + ins.text + moved.slice(k);
+  }
+  if (indent > 0) {
+    const pad = new RegExp(`\\n[ \\t]{0,${indent}}`, 'g');
+    moved = moved.replace(pad, '\n');
+  }
+
+  return [
+    { offset: cutFrom, length: cutTo - cutFrom, text: '' },
+    { offset: viewEnd, length: 0, text: `\n\n${moved}` },
+  ];
 }
 
 /**
@@ -3380,7 +3692,7 @@ function applyPageSubBlock(
         color: str('color'),
         swatch: str('swatch') as 'line' | 'box' | 'circle' | undefined,
         title: str('title'),
-        currents: str('currents') as import('./ast.js').LegendCurrents | undefined,
+        I_units: str('I_units') as import('./ast.js').LegendCurrents | undefined,
         notes: bool('notes'),
         comment: lines('comment'),
       };
@@ -3455,7 +3767,7 @@ function applyPageSubBlock(
         color: str('color'),
         style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
         labels: bool('labels'),
-        currents: bool('currents'),
+        values: bool('values'),
       };
       break;
     case 'times':
@@ -3465,6 +3777,17 @@ function applyPageSubBlock(
         color: str('color'),
         style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
         labels: bool('labels'),
+        values: bool('values'),
+      };
+      break;
+    case 'currents':
+      page.currents = {
+        loc: page.loc,
+        width_px: num('width_px'),
+        color: str('color'),
+        style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
+        labels: bool('labels'),
+        values: bool('values'),
       };
       break;
     case 'footer':

@@ -302,30 +302,8 @@ function validateViewScopes(ctx: Ctx): void {
   for (const t of study.times.values()) check(t.views, `time ${t.id}`);
   for (const f of study.faults.values()) check(f.views, `fault ${f.id}`);
   for (const sc of study.scenarios.values()) check(sc.views, `scenario ${sc.id}`);
-
-  /*
-   * A nested block that also names a scope.
-   *
-   * It is already scoped by where it sits, so the `views` or `group`
-   * beside it is dead text -- and dead text that looks load-bearing is
-   * worse than none. Refused rather than merged: honouring both would
-   * need a precedence rule between two ways of saying the same thing.
-   */
-  for (const item of ctx.doc?.items ?? []) {
-    if (item.type !== 'view' || !item.nested?.length) continue;
-    for (const block of item.nested) {
-      const entries: Array<{ views?: string[]; group?: string }> =
-        block.type === 'times' ? block.times : [block as { views?: string[] }];
-      for (const entry of entries) {
-        if (!entry.views?.length && !entry.group) continue;
-        add(ctx, 'NESTED_BLOCK_SCOPED', 'error',
-          `a ${block.type} declared inside view ${item.id ?? item.name ?? '(unnamed)'} `
-          + 'also names a scope; it is already scoped by where it sits. Remove the '
-          + 'views/group, or move the block to the top level',
-          block.loc);
-      }
-    }
-  }
+  for (const d of study.devices.values()) check(d.views, `device ${d.id}`, d.loc);
+  for (const c of study.currents.values()) check(c.views, `current "${c.name}"`);
 
   /*
    * A sheet naming a chain that does not exist would draw nothing at
@@ -621,8 +599,8 @@ function validateScenarios(ctx: Ctx): void {
         level.I0_A, level.earth_A, level.loc);
 
       for (const [field, value] of [
-        ['I_A', level.I_A], ['I1_A', level.I1_A], ['I2_A', level.I2_A],
-        ['I0_A', level.I0_A], ['earth_A', level.earth_A],
+        ['I', level.I_A], ['I1', level.I1_A], ['I2', level.I2_A],
+        ['I0', level.I0_A], ['residual', level.earth_A],
       ] as Array<[string, number | undefined]>) {
         if (value != null && (!Number.isFinite(value) || value < 0)) {
           add(ctx, 'FAULT_CURRENT_INVALID', 'error',
@@ -727,7 +705,7 @@ function validateFaults(ctx: Ctx): void {
     }
     if (!(fault.I_A > 0)) {
       add(ctx, 'FAULT_CURRENT_INVALID', 'error',
-        `fault ${fault.id} declares I_A = ${fault.I_A}; it must be strictly positive`,
+        `fault ${fault.id} declares I = ${fault.I_A}; it must be strictly positive`,
         fault.loc);
     }
 
@@ -795,21 +773,9 @@ function validateFaults(ctx: Ctx): void {
       }
     }
 
-    /*
-     * Said only when the condition really is one point. A study that
-     * declared its range in a component rather than in phase used to
-     * be told it had none.
-     */
-    const anyRange = Object.values(fault.range)
-      .some((v) => v != null && Number.isFinite(v));
-    if (!anyRange && fault.min_A === fault.I_A && fault.max_A === fault.I_A) {
-      add(ctx, 'FAULT_SINGLE_POINT', 'info',
-        `fault ${fault.id} declares only I_A; min_A and max_A default to it`,
-        fault.loc);
-    }
     if (fault.min_A > fault.max_A) {
       add(ctx, 'FAULT_RANGE_INVERTED', 'error',
-        `fault ${fault.id} has min_A (${fault.min_A}) above max_A (${fault.max_A})`,
+        `fault ${fault.id} has I_min (${fault.min_A}) above I_max (${fault.max_A})`,
         fault.loc);
     }
   }
@@ -937,7 +903,7 @@ function validateElements(ctx: Ctx): void {
         if (prior && prior !== element.id) {
           add(ctx, 'DUPLICATE_ELEMENT', 'error',
             `relay ${relay.id} declares elements ${prior} and ${element.id} with the same ` +
-            `(I_pu, tms, curve, measured current) -- they would double-trip identically`,
+            `(I_pickup, tms, curve, measured current) -- they would double-trip identically`,
             element.node.loc, element.id.length);
         } else if (!prior) {
           seen.set(key, element.id);
@@ -1035,6 +1001,30 @@ function validateStage(
   const loc = stage.node.loc;
   const keys = memberKeys(stage.node);
 
+  /* ---- time floor and delay, by kind of stage --------------------- */
+  /*
+   * An inverse stage's time comes from its curve. `t_delay` on one was
+   * read by nothing -- the curve drew exactly as if it were absent --
+   * and some relays treat such a delay as an adder, so whoever wrote it
+   * meant something. Refused, with what is supported. Only the stage's
+   * *own* declaration counts: an element-level `t_delay` is inherited
+   * by its definite stages and is not a mistake on the inverse ones.
+   */
+  const inverse = stage.producer != null && stage.producer.kind !== 'definite';
+  if (inverse && keys.has('t_delay')) {
+    add(ctx, 'DELAY_ON_INVERSE', 'error',
+      `${where} is an inverse stage, whose time comes from its curve, but declares t_delay; `
+      + 'an additional time delay (adder) is not supported -- for a minimum operating '
+      + 'time use t_floor',
+      loc);
+  }
+  if (stage.producer?.kind === 'definite' && keys.has('t_floor')) {
+    add(ctx, 'FLOOR_ON_DEFINITE', 'error',
+      `${where} is definite-time, so its time is t_delay; t_floor applies only to an `
+      + 'inverse or flex characteristic',
+      loc);
+  }
+
   /* ---- measured current ------------------------------------------ */
   /*
    * Which current a pickup is in decides the multiple, so it decides
@@ -1082,7 +1072,7 @@ function validateStage(
   /* ---- pickup ----------------------------------------------------- */
   if (stage.I_pu_declared != null && !(stage.I_pu_declared > 0)) {
     add(ctx, 'PICKUP_NOT_POSITIVE', 'error',
-      `${where} declares I_pu = ${stage.I_pu_declared}; it must be strictly positive`,
+      `${where} declares I_pickup = ${stage.I_pu_declared}; it must be strictly positive`,
       loc);
   }
   /*
@@ -1167,7 +1157,7 @@ function validateStage(
   /* ---- current share ---------------------------------------------- */
   if (!(stage.current_pct > 0 && stage.current_pct <= 100)) {
     add(ctx, 'CURRENT_PCT_OUT_OF_RANGE', 'error',
-      `${where} declares current_pct = ${stage.current_pct}; the accepted range is (0, 100]`,
+      `${where} declares share = ${stage.current_pct}; the accepted range is (0, 100]`,
       loc);
   }
 }
@@ -1465,7 +1455,7 @@ function validateGrades(ctx: Ctx): void {
       const tol = grade.solve.tolerance_pct;
       if (tol != null && (tol < 0 || tol > 50)) {
         add(ctx, 'TOLERANCE_OUT_OF_RANGE', 'error',
-          `solve declares tolerance_pct = ${tol}; the accepted range is [0, 50]`, loc);
+          `solve declares tolerance = ${tol} %; the accepted range is [0 %, 50 %]`, loc);
       }
       for (const free of grade.solve.free) {
         if (free !== 'tms' && free !== 't_delay' && free !== 'I_pickup') {

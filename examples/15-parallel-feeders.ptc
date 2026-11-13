@@ -84,10 +84,10 @@ scenario BOTH_CIRCUITS_IN {
   }
 
   sees R_FDR_A {
-    share = 50;
+    share = 50 %;
   }
   sees R_FDR_B {
-    share = 50;
+    share = 50 %;
   }
 }
 
@@ -104,7 +104,7 @@ scenario ONE_CIRCUIT_OUT {
   }
 
   sees R_FDR_A {
-    share = 100;
+    share = 100 %;
   }
 }
 
@@ -215,7 +215,7 @@ grade {
   solve {
     strategy = loose;
     free          = [tms];
-    tolerance_pct = 5;
+    tolerance = 5 %;
     comment = "dial the source relay to clear the grading";
   }
 }
@@ -312,7 +312,7 @@ page {
     title = "Feeders";
     position = "bottom_right";
     swatch = "box";
-    currents = "both";
+    I_units = "both";
   };
   curves      = {
     palette = "high_contrast";

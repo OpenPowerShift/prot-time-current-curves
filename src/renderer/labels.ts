@@ -127,6 +127,22 @@ function segmentHitsRect(s: Segment, r: Rect): boolean {
 }
 
 /**
+ * The leader a displaced label is drawn with: from its anchor to the
+ * middle of the box's near edge -- the right edge for a label hung to
+ * the left, where its text is right-aligned. Matches what the renderer
+ * draws, so the segment checked is the segment inked.
+ */
+function leaderOf(rect: Rect, side: LabelSide, anchor: { x: number; y: number }): Segment {
+  const x2 = side === 'left' ? rect.x + rect.w : rect.x;
+  const y2 = rect.y + rect.h / 2;
+  return {
+    x1: anchor.x, y1: anchor.y, x2, y2,
+    minX: Math.min(anchor.x, x2), maxX: Math.max(anchor.x, x2),
+    minY: Math.min(anchor.y, y2), maxY: Math.max(anchor.y, y2),
+  };
+}
+
+/**
  * Places labels so that none overlap.
  *
  * One instance per drawing. Reserve anything already on the sheet with
@@ -135,6 +151,15 @@ function segmentHitsRect(s: Segment, r: Rect): boolean {
 export class LabelPlacer {
   private readonly taken: Rect[] = [];
   private readonly lines: Segment[] = [];
+  /**
+   * Leaders drawn so far, from each displaced label back to its anchor.
+   *
+   * Two leaders that cross point each caption at the other's anchor --
+   * six required times at one fault current read with the 200 ms name
+   * on the 500 ms rule -- so a candidate whose leader would cross one,
+   * or whose box would sit on one, is refused like a collision.
+   */
+  private readonly leaders: Segment[] = [];
 
   /** Plot area labels must stay inside. */
   constructor(private readonly bounds: Rect) {}
@@ -218,10 +243,8 @@ export class LabelPlacer {
     /** Try one candidate; returns the placement if it can be taken outright. */
     const attempt = (rect: Rect, side: LabelSide, displaced: boolean): Placement | null => {
       if (!this.fits(rect, false)) return null;
-      if (this.fits(rect, true)) {
-        this.taken.push(rect);
-        return this.result(rect, side, size, displaced);
-      }
+      if (displaced && this.crossesLeader(leaderOf(rect, side, anchor))) return null;
+      if (this.fits(rect, true)) return this.take(rect, side, size, displaced, anchor);
       if (!lineFallback) lineFallback = { rect, side };
       return null;
     };
@@ -278,8 +301,7 @@ export class LabelPlacer {
      */
     if (lineFallback) {
       const { rect, side } = lineFallback;
-      this.taken.push(rect);
-      return this.result(rect, side, size, true);
+      return this.take(rect, side, size, true, anchor);
     }
 
     /*
@@ -291,8 +313,22 @@ export class LabelPlacer {
      */
     const side = prefer[0] ?? 'right';
     const fallback = this.clamp(this.rectFor(side, anchor, size, gap));
-    this.taken.push(fallback);
-    return this.result(fallback, side, size, true);
+    return this.take(fallback, side, size, true, anchor);
+  }
+
+  /** Occupy a box, and its leader when it has one. */
+  private take(
+    rect: Rect, side: LabelSide, size: { w: number; h: number }, displaced: boolean,
+    anchor: { x: number; y: number },
+  ): Placement {
+    this.taken.push(rect);
+    if (displaced) this.leaders.push(leaderOf(rect, side, anchor));
+    return this.result(rect, side, size, displaced);
+  }
+
+  private crossesLeader(lead: Segment): boolean {
+    return this.leaders.some((l) => segmentsCross(
+      lead.x1, lead.y1, lead.x2, lead.y2, l.x1, l.y1, l.x2, l.y2));
   }
 
   /** Pull a box inside the plot, preserving its size. */
@@ -316,6 +352,7 @@ export class LabelPlacer {
     if (rect.x < this.bounds.x || rect.x + rect.w > this.bounds.x + this.bounds.w) return false;
     if (rect.y < this.bounds.y || rect.y + rect.h > this.bounds.y + this.bounds.h) return false;
     if (this.taken.some((other) => overlaps(rect, other))) return false;
+    if (this.leaders.some((l) => segmentHitsRect(l, rect))) return false;
     return !dodgeLines || !this.onLine(rect);
   }
 

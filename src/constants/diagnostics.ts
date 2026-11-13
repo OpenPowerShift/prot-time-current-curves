@@ -62,8 +62,12 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A key was written with `=` and no value after it.' },
   DUPLICATE_KEY: { severity: ['error'],
     gloss: 'One key written twice in a block, where the second would silently win.' },
-  NESTED_BLOCK_SCOPED: { severity: ['error'],
-    gloss: 'A block appears inside another that does not contain it.' },
+  DELAY_ON_INVERSE: { severity: ['error'],
+    gloss: 'A `t_delay` declared on an inverse stage, whose time comes from its curve; use `t_floor` for a minimum time.' },
+  FLOOR_ON_DEFINITE: { severity: ['error'],
+    gloss: 'A `t_floor` on a definite-time stage, whose time is its `t_delay`.' },
+  VIEW_LISTS_ITEMS: { severity: ['error'],
+    gloss: 'A view listing the items drawn on it; membership is stated on each item with `views`.' },
 
   /* ---- keys and values ------------------------------------------- */
   UNKNOWN_SETTING: { severity: ['error'],
@@ -182,8 +186,6 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A declared fault current that is not finite and positive.' },
   FAULT_RANGE_INVERTED: { severity: ['error'],
     gloss: 'A fault whose minimum is above its maximum.' },
-  FAULT_SINGLE_POINT: { severity: ['info'],
-    gloss: 'A fault stating one current, so its range endpoints default to it.' },
   FAULT_VOLTAGE_UNSPECIFIED: { severity: ['error'],
     gloss: 'A fault with no voltage level in a study that declares several.' },
   RANGE_WITHOUT_CENTRE: { severity: ['error'],

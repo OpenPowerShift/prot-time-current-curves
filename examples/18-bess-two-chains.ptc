@@ -455,7 +455,7 @@ page {
 
   legend = {
     style = column;
-    currents = both;
+    I_units = both;
     notes = true;
   };
 

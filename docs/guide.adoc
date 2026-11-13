@@ -127,6 +127,7 @@ tc-curves report study.ptc              # margin report to stdout
 tc-curves render study.ptc --svg -o study.svg
 tc-curves render study.ptc --png -o study.png --width 1600
 tc-curves render study.ptc --pdf -o study.pdf
+tc-curves migrate study.ptc             # update old forms
 ----
 
 == Syntax essentials
@@ -397,11 +398,11 @@ no anchor at all.
 
 Each rule is captioned with its name *and its current* --
 `Board max · 6.2 kA`, the figure it is drawn for. Turn that off with
-`page { faults = { currents = false; }; }`.
+`page { faults = { values = false; }; }`.
 
 Style them with `page { times = { color = ...; width_px = ...; style =
-"solid" | "dashed" | "dotted"; labels = false; }; }`, which mirrors
-`page { faults }`. They are drawn in a different ink from the fault
+"solid" | "dashed" | "dotted"; labels = false; }; }`; `page { faults }`
+and `page { currents }` take the same keys. They are drawn in a different ink from the fault
 rules by default, so it is never a question which axis a rule belongs
 to.
 
@@ -416,7 +417,8 @@ a fault that does not exist.
 records the limit, so a curve that ends short reads as one that was
 told to. A `stage` takes one too and falls back to its element's: a
 high-set blocked above the maximum through-fault stops where *its*
-data stops.
+data stops. `t_floor = 100 ms;` is the other axis: an inverse curve never
+operates faster than it (a relay's "minimum time of the curve").
 
 Not only ink. Past its cutoff a stage does not operate, so a composite
 steps back onto whatever stage is still there, an upstream sweep stops
@@ -789,7 +791,7 @@ grade {
     fault         = "F_lv_max";    # or scenario = "..."
     margin        = 0.30 s;          # constraint: minimum acceptable
     margin_target = 0.35 s;          # target: exact design margin
-    tolerance_pct = 5;
+    tolerance = 5 %;
     upstream      = true;          # also sweep above the declared fault
     upstream_to   = 20 kA;         # ceiling for that sweep
     comment       = "feeder against incomer";
@@ -1659,7 +1661,7 @@ page {
         title    = "Protection";
         color    = "#222222";
         swatch   = "line";         # line, box, circle
-        currents = "both";         # primary, secondary, both
+        I_units  = "both";         # primary, secondary, both
         notes    = true;
     };
 }
@@ -1856,7 +1858,7 @@ is doing:
 [source,tc]
 ----
 page {
-    legend = { currents = "secondary"; };   # or "both", or "primary"
+    legend = { I_units = "secondary"; };   # or "both", or "primary"
 }
 ----
 
@@ -1910,7 +1912,6 @@ that relay's own winding.
 | `ZERO_DELAY_NOT_PLOTTABLE` | warning | `t_delay = 0 s`, which has no log-axis position; drawn at 20 ms instead.
 | `GRADE_MIXED_QUANTITY` | warning | The two sides of a grade measure different currents. Legitimate, but stated.
 | `RELAY_VOLTAGE_UNSPECIFIED` | warning | A relay has no `voltage` in a study with several levels.
-| `FAULT_SINGLE_POINT` | info | Only `I` given, so `I_min` and `I_max` default to it.
 |===
 
 == Writing a study from scratch

@@ -23,6 +23,7 @@ import {
 } from '@codemirror/autocomplete';
 
 import { tcCompletionSource } from '../editor/completions.js';
+import { migrate } from '../parser/migrate.js';
 import { helpAt, tcHoverSource } from '../editor/hover.js';
 import { tcLanguage } from '../highlight/tc-language.js';
 import { tcEditorAppearance } from '../highlight/tc-highlight-style.js';
@@ -233,6 +234,28 @@ export class TcEditor extends LitElement {
        * gesture, and the paste is unattributable when it happens.
        */
       EditorView.domEventHandlers({
+        /*
+         * A whole study pasted over the whole document (or into an
+         * empty one) is brought up to the current language, as a study
+         * opened from a file is. A fragment is left alone: its old
+         * forms may need context the fragment does not carry, and the
+         * diagnostics will say what to change.
+         */
+        paste: (event, view) => {
+          const text = event.clipboardData?.getData('text/plain');
+          const doc = view.state.doc;
+          const sel = view.state.selection.main;
+          const whole = doc.length === 0 || (sel.from === 0 && sel.to === doc.length);
+          if (!text || !whole) return false;
+          const migrated = migrate(text);
+          if (migrated.changes.length === 0) return false;
+          event.preventDefault();
+          view.dispatch({
+            changes: { from: 0, to: doc.length, insert: migrated.text },
+            userEvent: 'input.paste',
+          });
+          return true;
+        },
         mousedown: (event) => {
           if (event.button === 1) { event.preventDefault(); return true; }
           return false;

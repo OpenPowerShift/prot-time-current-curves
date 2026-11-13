@@ -28,7 +28,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { basename, extname, resolve as resolvePath } from 'node:path';
-import { process as processStudy, renderStudy } from './index.js';
+import { process as processStudy, renderStudy, migrate } from './index.js';
 import { exportPng } from './export/export-png.js';
 import { exportPdfSheets, PAPER_MM } from './export/export-pdf.js';
 import { toExportableSvg } from './export/exportable-svg.js';
@@ -39,7 +39,7 @@ import type { Diagnostic } from './semantics/validate.js';
 type Format = 'svg' | 'png' | 'pdf';
 
 interface Options {
-  command: 'render' | 'report' | 'check' | 'help';
+  command: 'render' | 'report' | 'check' | 'migrate' | 'help';
   input?: string;
   output?: string;
   format: Format;
@@ -56,6 +56,8 @@ interface Options {
   force?: boolean;
   /** Emit machine-readable JSON instead of the human report. */
   json?: boolean;
+  /** migrate: report what would change and exit 1, writing nothing. */
+  checkOnly?: boolean;
 }
 
 const USAGE = `tc-curves -- render protection-relay time-current grading studies
@@ -64,6 +66,7 @@ Usage:
   tc-curves render <file.ptc> [--svg|--png|--pdf] [options]
   tc-curves report <file.ptc>
   tc-curves check  <file.ptc>
+  tc-curves migrate <file.ptc> [--check] [-o out.ptc]
 
 Options:
   -o, --output <path>   Output file (default: input name with the format's suffix)
@@ -107,6 +110,7 @@ export function parseArgs(argv: string[]): Options {
       case '-q': case '--quiet': opts.quiet = true; break;
       case '--force': opts.force = true; break;
       case '--json': opts.json = true; break;
+      case '--check': opts.checkOnly = true; break;
       case '-o': case '--output': opts.output = stringArg(arg, argv[++i]); break;
       case '--width': opts.width = numberArg(arg, argv[++i], 200, 20_000); break;
       case '--scale': opts.scale = numberArg(arg, argv[++i], 0.1, 20); break;
@@ -135,7 +139,7 @@ export function parseArgs(argv: string[]): Options {
       + `(${[input, ...extra].join(', ')}). Run the tool once per study.`,
     );
   }
-  if (command === 'render' || command === 'report' || command === 'check') {
+  if (command === 'render' || command === 'report' || command === 'check' || command === 'migrate') {
     opts.command = command;
     opts.input = input;
   } else if (command) {
@@ -278,6 +282,39 @@ function declaredViews(
   return views.length > 0 ? views.map((view) => ({ view })) : [{}];
 }
 
+/**
+ * Rewrite a study's old forms into current ones, in place.
+ *
+ * Exit 0 when the file is current (or has been made so), 1 under
+ * `--check` when something would change -- a CI gate that a study has
+ * been migrated -- and 2 on I/O failure. An old form with no safe
+ * rewrite is not touched here; `check` reports it.
+ */
+async function runMigrate(opts: Options): Promise<number> {
+  let source: string;
+  try {
+    source = await readFile(opts.input!, 'utf8');
+  } catch (error) {
+    console.error(`tc-curves: cannot read ${opts.input}: ${(error as Error).message}`);
+    return 2;
+  }
+  const { text, changes } = migrate(source);
+  if (!opts.quiet) for (const c of changes) console.log(`${opts.input}: ${c}`);
+  if (opts.checkOnly) return changes.length > 0 ? 1 : 0;
+  if (changes.length === 0 && !opts.output) return 0;
+  const out = opts.output ?? opts.input!;
+  try {
+    await writeFile(out, text, 'utf8');
+  } catch (error) {
+    console.error(`tc-curves: cannot write ${out}: ${(error as Error).message}`);
+    return 2;
+  }
+  if (!opts.quiet) {
+    console.log(`${out}: ${changes.length === 0 ? 'already current' : `${changes.length} change(s) written`}`);
+  }
+  return 0;
+}
+
 export async function main(argv: string[]): Promise<number> {
   let opts: Options;
   try {
@@ -307,6 +344,11 @@ export async function main(argv: string[]): Promise<number> {
     console.error('tc-curves: --json describes a study; use it with check or report');
     return 2;
   }
+  if (opts.checkOnly && opts.command !== 'migrate') {
+    console.error('tc-curves: --check is a migrate option; check is a command of its own');
+    return 2;
+  }
+  if (opts.command === 'migrate') return runMigrate(opts);
 
   const inputPath = resolvePath(opts.input);
   let source: string;

@@ -100,6 +100,7 @@ relay R_INC {
     curve = iec.si;
     I_pickup = 720 A;
     tms = 0.30;
+    t_floor = 100 ms;   # never faster than this: a minimum time of the curve
   }
 }
 
@@ -118,6 +119,7 @@ relay R_FDR {
         curve = iec.vi;
         I_pickup = 480 A;
         tms = 0.25;
+        t_floor = 80 ms;
       }
       stage inst {
         curve = definite;

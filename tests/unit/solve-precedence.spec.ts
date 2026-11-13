@@ -179,7 +179,7 @@ describe('a scenario grade', () => {
 system { voltages { HV { V = 33 kV; } } }
 scenario S { type = three_phase;
   level HV { I = 7.2 kA; }
-  sees R_F { share = 50; } }
+  sees R_F { share = 50 %; } }
 relay R_F { voltage = HV; ct_ratio = 400/5;
   element 51 { function = phase_oc; curve = iec.si; I_pickup = 400 A; tms = 0.20; } }
 relay R_S { voltage = HV; ct_ratio = 800/5;

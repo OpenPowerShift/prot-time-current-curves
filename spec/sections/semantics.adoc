@@ -511,7 +511,7 @@ of each combination:
 | present | absent | absent | Pass/fail grading check across the bus-fault range.
 | present | present | absent | `margin_target` reported as a target; `margin` enforced as a constraint at every fault current.
 | absent | present | absent | `margin_target` reported as a target at `fault`; no constraint. *Warning* (`SOMETHING-IS-MISSING`: margin_s declared without an action).
-| any | present | present | `solve` adjusts free variables to hit `margin_target` (within `tolerance_pct`); `margin` continues to act as a floor.
+| any | present | present | `solve` adjusts free variables to hit `margin_target` (within `tolerance`); `margin` continues to act as a floor.
 |===
 
 [NOTE]
@@ -539,7 +539,7 @@ grade {
 
     solve {
         strategy       = "tight";    // minimum tms that meets the margin
-        tolerance_pct  = 5;          // accept 5% overshoot above target
+        tolerance  = 5 %;          // accept 5% overshoot above target
     }
 }
 ----
@@ -599,7 +599,7 @@ processor stores it on the AST node as `tms = { value, source: "auto" }`.
 
 ==== Tolerance band
 
-`tolerance_pct` declares how much *overshoot above* the target the
+`tolerance` declares how much *overshoot above* the target the
 engineer will accept. It plays two distinct roles, and conflating
 them is the usual source of confusion:
 
@@ -682,7 +682,7 @@ grade {
     backup         = R_TRF_INC:51;
     fault          = "F_FDR1_max";
     margin_target  = 0.30 s;
-    tolerance_pct  = 5;
+    tolerance  = 5 %;
 
     solve {
         strategy = "tight";
@@ -1525,6 +1525,15 @@ viewBox is computed from `size`, `orientation`, and `margins_mm`,
 for PNG it determines the canvas dimensions, and for PDF the
 physical page size matches `size`.
 
+A `page` takes a fixed set of keys directly (`size`, `orientation`,
+`border`, `stretch`, `theme`, `watermark`, `title`, `footer`,
+`margins_mm`); every other setting belongs to one of its sub-blocks.
+Any other key is reported (`UNKNOWN_KEY`), and where the word belongs
+to a sub-block the message names it: `page { nudge_px = 0; }` is
+told it belongs in `curves { nudge_px }`. A setting a `view` also
+takes (`nudge_px`) is resolved view first, then the page sub-block,
+then the default.
+
 [source,tc]
 ----
 page {
@@ -1562,7 +1571,11 @@ page {
         color    = "#c0392b";
         style    = "dashed";              // omit for a distinct dash per fault
         labels   = true;                  // names below the axis
+        values   = true;                  // the current beside each name
     }
+
+    times    { style = "solid"; }        // required times: same keys
+    currents { style = "dotted"; }       // ratings: same keys
 
     curves {
         palette       = "okabe_ito";      // colour-blind-friendly palette
@@ -1835,8 +1848,9 @@ it by the observed ratio gives 300 A, which is coherent with what the
 study says.
 
 A condition is swept when it declares a range in *any* component, not
-only in phase, and is reported as a single point only when it declares
-none.
+only in phase. A condition that declares no range is checked at its
+declared current alone; that is a complete declaration and is not
+reported.
 
 == Groups (protection chains)
 
@@ -1868,46 +1882,34 @@ between two mechanisms that mean the same thing.
 
 === Declaring something for one sheet
 
-`times`, `point` and `annotate` may be written inside a `view`:
-
-[source,tc]
-----
-view BESS_I2 {
-    quantity = I2;
-
-    times { T_UNBALANCED { name = "660 V backup"; t = 1 s; at_I2 = 430 A; } }
-    annotate { from = 45 A; to = 154 A; at_t = 1 s; label = "46 window"; }
-}
-----
-
-It means exactly the same as declaring them at the top level with
-`views = [BESS_I2]`, and is resolved to that -- but there is no name to
-spell, no name to keep in step when the sheet is renamed, and being
-scoped somewhere else is not expressible.
-
-A nested block may not also carry `views` or `group`. It is already
-scoped by where it sits, so the second statement is dead text that
-looks load-bearing, and honouring both would need a precedence rule
-between two ways of saying one thing. It is an error.
-
-[IMPORTANT]
-====
-Only things that exist *to be drawn* may nest. A relay `element` may
-not: it is a real setting in a real device, it exists whether or not it
-is drawn, and nesting it would put one relay's settings in three
-places.
-
-The line is worth stating because it explains the asymmetry: things
-that exist in the world are declared where they live; things that exist
-only to be drawn may be declared on the drawing.
-====
+A mark for one sheet is scoped like any other item, with `views`.
+Blocks may not be written inside a `view`: `times`, `point` or
+`annotate` there is `REMOVED_KEY`. The nested form was defined to mean
+`views = [<that view>]` on the block (on each entry, for `times`), so
+the error carries that rewrite and `migrate` applies it. A nested block
+in a view with no id, or one that also names a scope, has no
+meaning-preserving rewrite and is left to the author.
 
 === What decides whether something is drawn
 
-Three tiers, in order, so the common case needs no scoping at all:
+Membership runs one way: an item names the sheets it is drawn on, with
+`view = X` or `views = [X, Y]`. A `view` never lists its items --
+`view { currents = [...] }` (likewise `faults`, `times`, `devices`,
+`elements`, `points`, `annotations`) is an error (`VIEW_LISTS_ITEMS`)
+whose message names the fix. A view selects only through `group` and
+`condition`.
 
-. an element's own `view` / `views`, which wins;
-. otherwise the sheet's `group`, if it names one;
+Every drawn declaration takes `view` / `views` with the same meaning:
+an element, a device, a fault, a `times` entry, a `currents` entry, a
+point, an annotation. A relay does not: its elements carry it, and a
+relay is selected for a sheet through a `group`.
+
+For curves -- elements and devices -- three tiers, in order, so the
+common case needs no scoping at all:
+
+. the curve's own `view` / `views`, which wins;
+. otherwise the sheet's `group`, if it names one (a group may list
+  devices as well as relays);
 . otherwise it is drawn.
 
 An annotation is narrower still: one that names elements is drawn only

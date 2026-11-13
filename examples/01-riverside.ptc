@@ -91,7 +91,7 @@ grade {
   margin_target = 0.30 s;
   solve {
     strategy = "tight";
-    tolerance_pct = 5;
+    tolerance = 5 %;
   }
 }
 

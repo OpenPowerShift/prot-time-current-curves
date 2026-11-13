@@ -87,7 +87,7 @@ describe('the solver', () => {
     grade {
       primary = R_FAST:51; backup = R_SLOW:51; fault = "F";
       margin = 0.30 s; margin_target = 0.40 s;
-      solve { strategy = ${strategy}; free = ${free}; tolerance_pct = 5; }
+      solve { strategy = ${strategy}; free = ${free}; tolerance = 5 %; }
     }
   `);
 

@@ -391,6 +391,8 @@ device F_100T {
 A fuse grades on total-clear time as the primary and on minimum-melt as
 the backup, automatically. It can be named in a `grade` like any relay.
 
+A device takes `views` and `group` membership like an element.
+
 [#sheets]
 == 9. Several chains, several sheets
 
@@ -409,17 +411,7 @@ view F2_PHASE { group = FEEDER_2; quantity = phase; title = "Feeder 2"; }
 A relay in both chains is drawn on both sheets -- an incomer backs up
 everything, so it belongs to every chain it is on.
 
-For a mark that belongs to exactly one sheet, write it inside the view
-rather than inventing a name to reference:
-
-[source,tc]
-----
-view F1_PHASE {
-    group = FEEDER_1;
-    quantity = phase;
-    times { T_LOCAL { name = "RMU limit"; t = 500 ms; at_I = 4 kA; } }
-}
-----
+Items name their sheets with `views`; a view never lists or contains them.
 
 [#marks]
 == 10. Marking the sheet: points and annotations
@@ -538,8 +530,6 @@ what they mean when they appear.
                                 across a transformer whose windings do
                                 not settle how. Declare the
                                 `vector_group`, or use a `scenario`.
-| `FAULT_SINGLE_POINT` | Informational: one fault current, so no range
-                         was swept. Fine if that is all the report gave.
 |===
 
 A study that grades *fail* is not a broken study. It is the answer.

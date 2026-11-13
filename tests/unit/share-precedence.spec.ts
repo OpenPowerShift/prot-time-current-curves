@@ -43,7 +43,7 @@ const row = (src: string) => {
 describe('a relay whose share the scenario states', () => {
   it('is graded at the scenario\'s figure, not that times its own', () => {
     /* 4000 x 50% = 2000 A, against a 500 A pickup: a multiple of 4. */
-    const { report } = row(study('share = 50;', 'sees R_A { share = 50; }'));
+    const { report } = row(study('share = 50 %;', 'sees R_A { share = 50 %; }'));
     expect(report.rows[0].I_f_A).toBeCloseTo(2000, 0);
     expect(report.rows[0].M_primary).toBeCloseTo(4, 2);
   });
@@ -53,26 +53,26 @@ describe('a relay whose share the scenario states', () => {
      * The symptom a reader met: two adjacent lines contradicting each
      * other by a factor of two.
      */
-    const { report } = row(study('share = 50;', 'sees R_A { share = 50; }'));
+    const { report } = row(study('share = 50 %;', 'sees R_A { share = 50 %; }'));
     const r = report.rows[0];
     expect(r.M_primary).toBeCloseTo(r.I_f_A / 500, 2);
   });
 
   it('honours a scenario share of 100 rather than halving it', () => {
-    const { report } = row(study('share = 50;', 'sees R_A { share = 100; }'));
+    const { report } = row(study('share = 50 %;', 'sees R_A { share = 100 %; }'));
     expect(report.rows[0].I_f_A).toBeCloseTo(4000, 0);
     expect(report.rows[0].M_primary).toBeCloseTo(8, 2);
   });
 
   it('says so, because it is choosing between two readings of the study', () => {
-    expect(row(study('share = 50;', 'sees R_A { share = 50; }')).codes)
+    expect(row(study('share = 50 %;', 'sees R_A { share = 50 %; }')).codes)
       .toContain('SHARE_DECLARED_TWICE');
   });
 
   it('stays quiet when only one of them is declared', () => {
-    expect(row(study('', 'sees R_A { share = 50; }')).codes)
+    expect(row(study('', 'sees R_A { share = 50 %; }')).codes)
       .not.toContain('SHARE_DECLARED_TWICE');
-    expect(row(study('share = 50;', '')).codes)
+    expect(row(study('share = 50 %;', '')).codes)
       .not.toContain('SHARE_DECLARED_TWICE');
   });
 });
@@ -81,7 +81,7 @@ describe('a relay whose share only the element states', () => {
   it('still takes it, the scenario having said nothing', () => {
     /* The installation-level split: two identical feeders off a board,
      * with no condition claiming to know better. */
-    const { report } = row(study('share = 50;', ''));
+    const { report } = row(study('share = 50 %;', ''));
     expect(report.rows[0].M_primary).toBeCloseTo(4, 2);
   });
 });
@@ -107,7 +107,7 @@ describe('the sheet a share is drawn on', () => {
      * figure -- 500 A of level current where it needs 1000. The sheet
      * showed it operating for faults it does not see.
      */
-    const src = study('', 'sees R_A { share = 50; }').replace(
+    const src = study('', 'sees R_A { share = 50 %; }').replace(
       'view { voltage = HV; }',
       `view { voltage = HV; quantity = phase; condition = S;
               current_min = 100 A; current_max = 30 kA; }`,
@@ -118,7 +118,7 @@ describe('the sheet a share is drawn on', () => {
 
   it('leaves it alone on a sheet that depicts nothing', () => {
     /* No condition, no share to draw from: the element's own stands. */
-    const src = study('', 'sees R_A { share = 50; }').replace(
+    const src = study('', 'sees R_A { share = 50 %; }').replace(
       'view { voltage = HV; }',
       'view { voltage = HV; quantity = phase; current_min = 100 A; current_max = 30 kA; }',
     );

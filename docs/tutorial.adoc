@@ -194,7 +194,7 @@ the legend can show both figures:
 
 [source,tc]
 ----
-page { legend = { currents = "both"; }; }
+page { legend = { I_units = "both"; }; }
 ----
 
 This is worth doing. A panel headed one way and figured the other is
@@ -510,7 +510,7 @@ page {
     border      = true;
 
     legend = { title    = "Protection";
-               currents = "both";
+               I_units = "both";
                comment  = ["Checked against issue D.",
                            "Queries to the protection team."]; };
     faults = { style = "dashed"; };

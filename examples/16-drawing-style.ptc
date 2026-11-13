@@ -162,7 +162,7 @@ page {
     title = "Protection";
     color = "#222222";
     swatch = "circle";
-    currents = "both"; # primary and secondary amps
+    I_units = "both"; # primary and secondary amps
     notes = true; # the tool's account of what it could not draw
 
     # The office's own standing text, under its own heading. `notes`
@@ -232,7 +232,7 @@ page {
     # drawn for. Turn this off where a dozen conditions at similar
     # currents would make a band of numbers and the legend already
     # quotes them.
-    currents = true;
+    values = true;
   };
   times  = {
     style = "dashed";
