@@ -57,6 +57,11 @@ export interface MarginRow {
 }
 
 export interface GradeReport {
+  /**
+   * For the lower pair of a `below` / `middle` / `above` grade: where
+   * the middle curve was placed, and the gap it was placed in.
+   */
+  spacing?: { pct: number; t_below_s: number; t_above_s: number };
   primaryRef: string;
   backupRef: string;
   fault?: string;
@@ -488,7 +493,7 @@ function reportScenarioGrade(
    * dialling a relay to hold a margin open.
    */
   registerRecompute(report, grade, primary, backup);
-  planSolve(grade, report, report.rows[0], primary, backup, diagnostics);
+  planSolve(study, grade, report, report.rows[0], primary, backup, diagnostics);
 
   return report;
 }
@@ -1102,7 +1107,7 @@ export function reportGrade(study: Study, grade: Grade): GradeReport {
   }
 
   registerRecompute(report, grade, primary, backup);
-  planSolve(grade, report, declaredRow, primary, backup, diagnostics);
+  planSolve(study, grade, report, declaredRow, primary, backup, diagnostics);
 
   return report;
 }
@@ -1136,6 +1141,7 @@ interface SolvePlan {
 const solvePlans = new WeakMap<GradeReport, SolvePlan>();
 
 function planSolve(
+  study: Study,
   grade: Grade,
   report: GradeReport,
   declaredRow: MarginRow | undefined,
@@ -1197,10 +1203,38 @@ function planSolve(
     ? primaryStage.I_pu_A * ratioToBackup
     : undefined;
 
+  /*
+   * A `below` / `middle` / `above` grade: the target is a fraction of
+   * the gap between the outer two curves at this fault, in seconds.
+   * Read by grading below against above as a pair -- the same fault,
+   * the same referral across any transformer -- so the gap is the one
+   * the reader measures on the sheet.
+   */
+  let target_s = grade.margin_s ?? grade.CTI_min_s!;
+  if (grade.spacing) {
+    const outer = reportGrade(study, {
+      ...grade, backup: grade.spacing.above, spacing: undefined, solve: undefined,
+    });
+    const row = outer.rows.find((r) => r.at === 'I');
+    if (!row || !Number.isFinite(row.t_primary_s) || !Number.isFinite(row.t_backup_s)) {
+      diagnostics.push({
+        code: 'SPACING_UNRESOLVED',
+        severity: 'warning',
+        message: `${grade.roles?.[0] ?? 'below'} or above does not operate at the fault, `
+          + 'so there is no gap to place the middle curve in',
+      });
+      return;
+    }
+    target_s = (grade.spacing.pct / 100) * (row.t_backup_s - row.t_primary_s);
+    report.spacing = {
+      pct: grade.spacing.pct, t_below_s: row.t_primary_s, t_above_s: row.t_backup_s,
+    };
+  }
+
   const result = solveGrade({
     backup: backup.element,
     t_primary_s: declaredRow.t_primary_s,
-    margin_s: grade.margin_s ?? grade.CTI_min_s!,
+    margin_s: target_s,
     /* The solver works in the backup's own frame. */
     I_f_A: declaredRow.I_backup_A,
     strategy: grade.solve.strategy,
@@ -1437,6 +1471,14 @@ export function formatGradeReport(report: GradeReport): string {
 
   if (report.CTI_min_s != null) out.push(`    margin          = ${s3(report.CTI_min_s)}`);
   if (report.margin_s != null) out.push(`    margin_target   = ${s3(report.margin_s)}`);
+  if (report.spacing) {
+    const { pct, t_below_s, t_above_s } = report.spacing;
+    const t_mid = report.rows.find((r) => r.at === 'I')?.t_backup_s;
+    const placed = t_mid != null && t_above_s > t_below_s
+      ? ` -- placed at ${(100 * (t_mid - t_below_s) / (t_above_s - t_below_s)).toFixed(1)} %`
+      : '';
+    out.push(`    spacing         = ${pct} % of ${s3(t_below_s)} (below) to ${s3(t_above_s)} (above)${placed}`);
+  }
 
   if (declared) {
     /*

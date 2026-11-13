@@ -66,6 +66,10 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A `t_delay` declared on an inverse stage, whose time comes from its curve; use `t_floor` for a minimum time.' },
   FLOOR_ON_DEFINITE: { severity: ['error'],
     gloss: 'A `t_floor` on a definite-time stage, whose time is its `t_delay`.' },
+  GRADE_SHAPE: { severity: ['error'],
+    gloss: 'A grade mixing primary/backup with below/middle/above, or placing a middle curve without a valid spacing.' },
+  SPACING_UNRESOLVED: { severity: ['warning'],
+    gloss: 'The below or above curve does not operate at the fault, so there is no gap to place the middle curve in.' },
   VIEW_LISTS_ITEMS: { severity: ['error'],
     gloss: 'A view listing the items drawn on it; membership is stated on each item with `views`.' },
 

@@ -1334,8 +1334,34 @@ function validateGrades(ctx: Ctx): void {
   for (const grade of study.grades) {
     const loc = grade.node.loc;
 
-    for (const [role, ref] of [['primary', grade.primary], ['backup', grade.backup]] as const) {
+    const [lowRole, highRole] = grade.roles ?? ['primary', 'backup'];
+
+    /*
+     * The `below` / `middle` / `above` shape, checked once, on its lower
+     * pair. It is a different shape of `grade`, not a synonym: mixing
+     * its keys with `primary` / `backup` has no single meaning.
+     */
+    if (lowRole === 'below') {
+      const node = grade.node;
+      if (node.primary || node.backup) {
+        add(ctx, 'GRADE_SHAPE', 'error',
+          'a grade uses primary/backup (a pair) or below/middle/above (placing the middle '
+          + 'of three), not both', loc);
+      }
+      if (node.spacing_pct == null) {
+        add(ctx, 'GRADE_SHAPE', 'error',
+          'a below/middle/above grade needs spacing -- how far from below to above the '
+          + 'middle curve sits, e.g. spacing = 50 %', loc);
+      } else if (!(node.spacing_pct >= 0 && node.spacing_pct <= 100)) {
+        add(ctx, 'GRADE_SHAPE', 'error',
+          `spacing = ${node.spacing_pct} % is outside 0 % (on below) to 100 % (on above)`, loc);
+      }
+    }
+
+    for (const [role, ref] of [[lowRole, grade.primary], [highRole, grade.backup]] as const) {
       if (!ref) {
+        /* `middle` is both pairs' side; say it once. */
+        if (role === 'middle' && lowRole === 'middle') continue;
         add(ctx, 'GRADE_MISSING_SIDE', 'error',
           `grade block declares no ${role}`, loc);
         continue;

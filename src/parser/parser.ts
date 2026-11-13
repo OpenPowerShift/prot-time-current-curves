@@ -248,7 +248,7 @@ export const KEYWORDS = new Set([
   'definite', 'formula', 'flex_points', 'curve', 't_r',
   // attribute keys
   'function', 'tms', 't_delay', 'I_units',
-  'tolerance', 'upstream', 'upstream_to',
+  'tolerance', 'upstream', 'upstream_to', 'below', 'middle', 'above', 'spacing',
   /* Units-everywhere names. No key carries its own unit. */
   'I', 'I_min', 'I_max', 'residual', 't', 'V',
   /*
@@ -2261,6 +2261,38 @@ if (kwName === 'flex_points') {
               else g.backup = r;
             }
             break;
+          case 'below':
+          case 'middle':
+          case 'above':
+            {
+              const r = this.parseRef();
+              this.eat('SEMI');
+              g[k.image] = r;
+            }
+            break;
+          case 'spacing':
+            {
+              /*
+               * A fraction of the gap, never a time: a time difference
+               * between two curves is what `margin` already says, and a
+               * second key for it would be a second way to say it.
+               */
+              const unit = this.peekAt(1);
+              if (this.at('NUMBER') && (unit.kind === 'IDENT' || unit.kind === 'KW')
+                  && ['s', 'ms', 'min', 'ks'].includes(unit.image)) {
+                this.errors.push({
+                  message: 'spacing is a percentage of the gap between below and above '
+                    + '(spacing = 50 %); a time difference is margin',
+                  line: unit.line, column: unit.col, offset: unit.start, length: unit.image.length,
+                  severity: 'error', code: 'UNIT_WRONG_QUANTITY',
+                });
+                this.pos += 2;
+              } else {
+                g.spacing_pct = this.parsePercent('spacing');
+              }
+              this.eat('SEMI');
+            }
+            break;
           case 'scenario':
           case 'fault':
             {
@@ -2350,7 +2382,7 @@ if (kwName === 'flex_points') {
             }
             break;
           default:
-            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance', 'upstream', 'upstream_to', 'solve', 'comment']);
+            this.noteUnknownKey('a grade', k, ['primary', 'backup', 'below', 'middle', 'above', 'spacing', 'fault', 'scenario', 'margin', 'margin_target', 'tolerance', 'upstream', 'upstream_to', 'solve', 'comment']);
             this.parseScalarValue();
             this.eat('SEMI');
         }

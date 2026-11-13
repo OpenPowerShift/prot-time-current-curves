@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-137 codes.
+139 codes.
 
 === Lexing and parsing
 
@@ -32,7 +32,9 @@ each, most serious first.
 | `EXPECTED_TOKEN` | error | A specific token was required here and something else was found.
 | `EXPECTED_TOP_LEVEL` | error | A top-level block was expected at this point in the file.
 | `FLOOR_ON_DEFINITE` | error | A `t_floor` on a definite-time stage, whose time is its `t_delay`.
+| `GRADE_SHAPE` | error | A grade mixing primary/backup with below/middle/above, or placing a middle curve without a valid spacing.
 | `MISSING_VALUE` | error | A key was written with `=` and no value after it.
+| `SPACING_UNRESOLVED` | warning | The below or above curve does not operate at the fault, so there is no gap to place the middle curve in.
 | `TOPLEVEL_PARSE` | error | A top-level block could not be parsed; its contents are skipped.
 | `UNEXPECTED_CHARACTER` | error | A character the lexer does not recognise anywhere in the language.
 | `UNKNOWN_TOP_LEVEL` | error | A top-level block whose keyword the language does not have.

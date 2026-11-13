@@ -1,0 +1,98 @@
+# Sample 19 — Placing a curve between two others
+#
+# Three relays in series on a 33 kV BESS feeder: the ring main unit,
+# the feeder and the incomer. The RMU and the incomer are already set;
+# the feeder is the one being placed.
+#
+# A `grade` has two shapes. `primary` / `backup` grades a pair. This
+# file uses the other: `below` / `middle` / `above` places the middle
+# curve a fraction of the way -- in seconds, at the fault -- from the
+# faster curve to the slower one, and solves its dial to put it there:
+#
+#   t_middle = t_below + spacing x (t_above - t_below)
+#
+# `spacing = 50 %` spreads the margin evenly; 0 % would sit on the RMU
+# and 100 % on the incomer. Both resulting gaps are still checked
+# against `margin`, so a spacing that squeezes one of them fails the
+# grade rather than passing quietly. `below` and `above` mean faster
+# and slower in time at that fault, as drawn -- not lower and higher
+# current, and not position in the network.
+
+meta {
+  project = "Example BESS feeder";
+  study = "33 kV phase overcurrent, even spacing";
+  margin = 300 ms;
+}
+
+system {
+  voltages {
+    MV {
+      V = 33 kV;
+    }
+  }
+}
+
+faults {
+  F_RMU_LV_MIN {
+    name = "RMU transformer LV, minimum";
+    I = 850 A;
+    voltage = MV;
+    type = three_phase;
+  }
+}
+
+relay R_RMU {
+  name = "BESS RMU";
+  voltage = MV;
+  ct_ratio = 300/1;
+  element 51P {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 90 A;
+    tms = 0.10;
+  }
+}
+
+relay R_FEEDER {
+  name = "BESS feeder";
+  voltage = MV;
+  ct_ratio = 800/1;
+  element 51P {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 300 A;
+    tms = 0.10; # replaced by the solve below; the sheet says so
+  }
+}
+
+relay R_INCOMER {
+  name = "33 kV incomer";
+  voltage = MV;
+  ct_ratio = 2500/1;
+  element 51P {
+    function = "phase_oc";
+    curve = iec.si;
+    I_pickup = 400 A;
+    tms = 0.50;
+  }
+}
+
+grade {
+  below = R_RMU:51P;
+  middle = R_FEEDER:51P;
+  above = R_INCOMER:51P;
+  fault = F_RMU_LV_MIN;
+  spacing = 50 %;
+  solve {
+    free = [tms];
+  }
+}
+
+view {
+  voltage = MV;
+  quantity = phase;
+  current_min = 50 A;
+  current_max = 20 kA;
+  time_min = 10 ms;
+  time_max = 100 s;
+}
