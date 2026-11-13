@@ -327,7 +327,7 @@ domain-t 0.01,1000
 [bands] path n=3 bbox=269.2,231.9..517.4,698.5
 [bands] path n=3 bbox=269.2,198.9..517.4,666.3 data-curve=spur_fuse_50T
 [curves] path n=108 bbox=552.5,66.0..1056.0,533.6 class=tc-curve data-curve=R_INC:51 data-ref=R_INC:51 data-voltage=HV
-[curves] path n=139 bbox=414.7,66.0..1056.0,815.2 class=tc-curve data-curve=R_FDR:51 data-ref=R_FDR:51 data-voltage=LV
+[curves] path n=139 bbox=414.7,66.0..1056.0,650.1 class=tc-curve data-curve=R_FDR:51 data-ref=R_FDR:51 data-voltage=LV
 [curves] path n=125 bbox=471.7,66.0..1056.0,645.3 class=tc-curve data-curve=R_FDR:51X data-ref=R_FDR:51X data-voltage=LV
 [points] path n=4 bbox=728.0,604.2..738.0,614.2
 [points] path n=4 bbox=728.0,604.2..738.0,614.2

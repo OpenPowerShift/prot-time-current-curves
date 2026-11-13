@@ -174,9 +174,18 @@ export function tTripStage(stage: Stage, I_total: number, sharePct?: number): nu
     return tTripDefinite(I, I_pu, delay);
   }
 
+  /*
+   * `t_floor`: the characteristic never operates faster than this. It
+   * composes with a curve's own `G_D` ceiling multiple -- both hold the
+   * time up, and the larger wins. A stage that does not operate
+   * (Infinity) is not lifted to the floor.
+   */
+  const floor = (t: number): number =>
+    stage.t_floor_s != null && Number.isFinite(t) ? Math.max(t, stage.t_floor_s) : t;
+
   if (producer.kind === 'flex') {
     /* A flex table is absolute in amps; `tms` scales it linearly. */
-    return tTripFlex(I, producer.points, stage.tms ?? 1);
+    return floor(tTripFlex(I, producer.points, stage.tms ?? 1));
   }
 
   if (I_pu == null || I_pu <= 0) return Infinity;
@@ -184,13 +193,13 @@ export function tTripStage(stage: Stage, I_total: number, sharePct?: number): nu
   const tms = stage.tms ?? 1;
 
   if (producer.kind === 'formula') {
-    return tTripIDMT(M, { k: producer.k, c: producer.c, alpha: producer.alpha }, tms);
+    return floor(tTripIDMT(M, { k: producer.k, c: producer.c, alpha: producer.alpha }, tms));
   }
 
   const c = producer.constants;
-  if (c.form === 'ri') return tTripRI(M, c.a ?? 0, c.b ?? 0, tms);
-  if (c.form === 'log') return tTripLog(M, c.a ?? 0, c.b ?? 0, tms);
-  return tTripIDMT(M, { k: c.k, c: c.c, alpha: c.alpha, G_D: c.G_D }, tms);
+  if (c.form === 'ri') return floor(tTripRI(M, c.a ?? 0, c.b ?? 0, tms));
+  if (c.form === 'log') return floor(tTripLog(M, c.a ?? 0, c.b ?? 0, tms));
+  return floor(tTripIDMT(M, { k: c.k, c: c.c, alpha: c.alpha, G_D: c.G_D }, tms));
 }
 
 /**

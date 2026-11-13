@@ -15,7 +15,7 @@ Severity is as emitted. A handful of codes are raised at more than
 one severity depending on which check reaches them first; those list
 each, most serious first.
 
-136 codes.
+138 codes.
 
 === Lexing and parsing
 
@@ -23,6 +23,7 @@ each, most serious first.
 |===
 | Code | Severity | Meaning
 
+| `DELAY_ON_INVERSE` | error | A `t_delay` declared on an inverse stage, whose time comes from its curve; use `t_floor` for a minimum time.
 | `DUPLICATE_KEY` | error | One key written twice in a block, where the second would silently win.
 | `EXPECTED_IDENT` | error | An identifier was required here -- a block id, or a key.
 | `EXPECTED_KEYWORD` | error | A keyword from a closed set was required and the word given is not in it.
@@ -30,6 +31,7 @@ each, most serious first.
 | `EXPECTED_NUMBER` | error | A number was required and the value given is not one.
 | `EXPECTED_TOKEN` | error | A specific token was required here and something else was found.
 | `EXPECTED_TOP_LEVEL` | error | A top-level block was expected at this point in the file.
+| `FLOOR_ON_DEFINITE` | error | A `t_floor` on a definite-time stage, whose time is its `t_delay`.
 | `MISSING_VALUE` | error | A key was written with `=` and no value after it.
 | `TOPLEVEL_PARSE` | error | A top-level block could not be parsed; its contents are skipped.
 | `UNEXPECTED_CHARACTER` | error | A character the lexer does not recognise anywhere in the language.
@@ -175,7 +177,7 @@ each, most serious first.
 | `SOLVER_NO_TARGET` | warning | The solver was given no finite margin to aim at.
 | `SOLVER_READONLY_DEVICE` | warning | The backup is a device, whose published curve is not adjustable.
 | `SOLVER_UNSATISFIABLE` | warning | The target needs a dial outside the settable range; the report says how far.
-| `TOLERANCE_OUT_OF_RANGE` | error | A `tolerance` outside a sensible band.
+| `TOLERANCE_OUT_OF_RANGE` | error | A `tolerance_pct` outside a sensible band.
 | `UPSTREAM_DISABLED_WITH_CEILING` | warning | An `upstream_to` ceiling on a pair whose sweep is switched off.
 | `UPSTREAM_RANGE_EMPTY` | warning | An upstream sweep whose ceiling is not above the declared fault.
 | `UPSTREAM_TO_INVALID` | error | An `upstream_to` ceiling that is not a positive current.

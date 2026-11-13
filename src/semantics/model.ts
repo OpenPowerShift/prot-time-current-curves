@@ -164,6 +164,13 @@ export interface Stage {
    * warn about it.
    */
   t_delay_zero_defaulted?: boolean;
+  /**
+   * Minimum operating time of an inverse or flex characteristic: above
+   * pickup the stage never operates faster than this (SIPROTEC 5
+   * "min. time of the curve"). A floor, not a cutoff -- `I_cutoff`
+   * removes the stage above a current; this holds its time up.
+   */
+  t_floor_s?: number;
   /** Share of the total fault current this stage sees, in percent. */
   current_pct: number;
   function?: string;
@@ -1368,6 +1375,7 @@ function resolveStage(
 
   const tmsRaw = rawNumber(pick('tms'));
   const tDelay = seconds(pick('t_delay'));
+  const tFloor = seconds(pick('t_floor'));
   const currentPct = rawNumber(pick('share'));
 
   /*
@@ -1393,6 +1401,7 @@ function resolveStage(
     tms: Number.isFinite(tmsRaw) ? tmsRaw : undefined,
     t_delay_s,
     t_delay_zero_defaulted: tDelay.value === 0 || undefined,
+    t_floor_s: Number.isFinite(tFloor.value) && tFloor.value > 0 ? tFloor.value : undefined,
     current_pct: Number.isFinite(currentPct) ? currentPct : 100,
     function: readString(pick('function')),
     measures: readString(pick('measures')),

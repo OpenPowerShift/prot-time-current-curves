@@ -417,7 +417,8 @@ a fault that does not exist.
 records the limit, so a curve that ends short reads as one that was
 told to. A `stage` takes one too and falls back to its element's: a
 high-set blocked above the maximum through-fault stops where *its*
-data stops.
+data stops. `t_floor = 100 ms;` is the other axis: an inverse curve never
+operates faster than it (a relay's "minimum time of the curve").
 
 Not only ink. Past its cutoff a stage does not operate, so a composite
 steps back onto whatever stage is still there, an upstream sweep stops

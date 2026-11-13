@@ -1001,6 +1001,30 @@ function validateStage(
   const loc = stage.node.loc;
   const keys = memberKeys(stage.node);
 
+  /* ---- time floor and delay, by kind of stage --------------------- */
+  /*
+   * An inverse stage's time comes from its curve. `t_delay` on one was
+   * read by nothing -- the curve drew exactly as if it were absent --
+   * and some relays treat such a delay as an adder, so whoever wrote it
+   * meant something. Refused, with what is supported. Only the stage's
+   * *own* declaration counts: an element-level `t_delay` is inherited
+   * by its definite stages and is not a mistake on the inverse ones.
+   */
+  const inverse = stage.producer != null && stage.producer.kind !== 'definite';
+  if (inverse && keys.has('t_delay')) {
+    add(ctx, 'DELAY_ON_INVERSE', 'error',
+      `${where} is an inverse stage, whose time comes from its curve, but declares t_delay; `
+      + 'an additional time delay (adder) is not supported -- for a minimum operating '
+      + 'time use t_floor',
+      loc);
+  }
+  if (stage.producer?.kind === 'definite' && keys.has('t_floor')) {
+    add(ctx, 'FLOOR_ON_DEFINITE', 'error',
+      `${where} is definite-time, so its time is t_delay; t_floor applies only to an `
+      + 'inverse or flex characteristic',
+      loc);
+  }
+
   /* ---- measured current ------------------------------------------ */
   /*
    * Which current a pickup is in decides the multiple, so it decides

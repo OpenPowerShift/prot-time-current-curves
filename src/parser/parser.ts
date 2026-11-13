@@ -260,7 +260,7 @@ export const KEYWORDS = new Set([
    */
   'I1_min', 'I1_max', 'I2_min', 'I2_max', 'I0_min', 'I0_max',
   'residual_min', 'residual_max',
-  'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target',
+  'I_pickup', 'I_base', 'base_S', 'share', 'margin', 'margin_target', 't_floor',
   'at_I', 'at_I1', 'at_I2', 'at_I0', 'at_residual', 'at_3I0', 'at_t',
   'rating_I', 'rating_V', 'rating_S',
   /* Recognised only to be refused with the new spelling. */
@@ -1761,7 +1761,7 @@ if (kwName === 'flex_points') {
     if (!((at.kind === 'IDENT' || at.kind === 'KW') && this.peekAt(1).kind === 'EQUALS')) return;
     this.noteUnknownKey(what, at, [
       'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-      'I_pickup', 'I_units', 'share', 'tms', 't_delay', 'comment', 'I_cutoff',
+      'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_floor', 'comment', 'I_cutoff',
       'color', 'style', 'width_px', 'view', 'views',
       ...(what === 'an element' ? ['stages'] : []),
     ], /* strict */ true);
@@ -1958,7 +1958,7 @@ if (kwName === 'flex_points') {
          */
         this.noteUnknownKey('an element', k, [
           'name', 'function', 'measures', 'curve', 'formula', 'flex_points',
-          'I_pickup', 'I_units', 'share', 'tms', 't_delay',
+          'I_pickup', 'I_units', 'share', 'tms', 't_delay', 't_floor',
           'stages', 'comment', 'I_cutoff',
           /* How the curve is drawn, as opposed to how it operates. */
           'color', 'style', 'width_px',

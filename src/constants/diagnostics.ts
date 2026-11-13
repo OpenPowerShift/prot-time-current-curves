@@ -62,6 +62,10 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A key was written with `=` and no value after it.' },
   DUPLICATE_KEY: { severity: ['error'],
     gloss: 'One key written twice in a block, where the second would silently win.' },
+  DELAY_ON_INVERSE: { severity: ['error'],
+    gloss: 'A `t_delay` declared on an inverse stage, whose time comes from its curve; use `t_floor` for a minimum time.' },
+  FLOOR_ON_DEFINITE: { severity: ['error'],
+    gloss: 'A `t_floor` on a definite-time stage, whose time is its `t_delay`.' },
   VIEW_LISTS_ITEMS: { severity: ['error'],
     gloss: 'A view listing the items drawn on it; membership is stated on each item with `views`.' },
 

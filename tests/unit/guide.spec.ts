@@ -64,8 +64,12 @@ describe('the guide as a document', () => {
      * millimetres, an anchored multiples scale, coincident-curve
      * separation. The fraction has not moved and is what the bound
      * actually rests on: the guide is still under a third of the spec.
+     *
+     * Raised to 74k on 2026-11-13 for `migrate`, the page rule blocks
+     * and `t_floor` -- agreed with the maintainer rather than deleting
+     * documentation of working features.
      */
-    expect(GUIDE.length).toBeLessThan(71_000);
+    expect(GUIDE.length).toBeLessThan(74_000);
     expect(GUIDE.length).toBeLessThan(SPEC.length / 2);
   });
 });
