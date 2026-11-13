@@ -4888,7 +4888,12 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
          * because on a sheet of nothing but scenarios a full sentence
          * repeats itself down the whole panel.
          */
-        const provenance = f.kind === 'scenario' ? ['scenario'] : f.kind === 'rating' ? ['rating'] : [];
+        /* A rating needs no word of its own: its swatch is drawn in the
+         * rating style and the heading says the block holds ratings. It
+         * cost every rating a line, which is what ran a ratings-heavy
+         * legend off the sheet. */
+        const provenance = f.kind === 'scenario' ? ['scenario'] : [];
+        if (density === 'minimal') return [i, [] as string[]] as const;
         /* And what it reads on the second scale, where there is one --
          * the same figure the rule's own caption carries. */
         const onSecond = secondAxis && f.I_view != null
@@ -4945,6 +4950,17 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       faultsY += LINE_HEADING;
 
       for (const i of shownFaults) {
+        /*
+         * Out of room: count it rather than draw past the frame. Only
+         * the curves were ever dropped, so a sheet with a dozen faults
+         * and ratings ran its legend off the bottom of the page. The
+         * margin keeps room for the notes line and the count itself.
+         */
+        const entryH = (faultText.get(i)?.length ?? 0) * LINE_LABEL
+          + ((faultProjection.get(i)?.length ?? 0) + (faultNotes.get(i)?.length ?? 0))
+            * (LINE_DETAIL - 2)
+          + entryGap;
+        if (faultsY + entryH - originY > budget - 2 * LINE_DETAIL) { dropped++; continue; }
         const swatchY = faultsY - FONT_LABEL / 3;
         const isRating = faults[i].kind === 'rating';
         const dash = isRating ? ratingDash : faultDash(i);
@@ -4989,7 +5005,13 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * horizontal rule should not have to search a list of currents for
      * its name.
      */
-    if (timesOnPlot.length > 0) {
+    /* A heading with nothing under it reads as a section that failed
+     * to draw: where not even one entry has room, the whole section is
+     * counted instead. */
+    const timesRoom = cursorY + 8 + LINE_HEADING + 2 * LINE_LABEL - originY
+      <= budget - 2 * LINE_DETAIL;
+    if (timesOnPlot.length > 0 && !timesRoom) dropped += timesOnPlot.length;
+    if (timesOnPlot.length > 0 && timesRoom) {
       cursorY += 8;
       lines.push(
         `<text x="${originX}" y="${cursorY}" font-size="${FONT_HEADING}" ` +
@@ -4997,28 +5019,40 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       );
       cursorY += LINE_HEADING;
 
-      for (const t of timesOnPlot) {
+      /* One entry per rule, as drawn: requirements sharing a time
+       * share a line on the plot, so they share an entry here. */
+      for (const group of timeGroups) {
+        const text = wrapText(
+          `${group.members.map((t) => t.name).join(' / ')} · ${formatSi(group.t_s, 's')}`,
+          textWidth, FONT_DETAIL);
+        const described = showDetail
+          ? group.members.flatMap((t) => (t.description
+            ? wrapText(oneLine(t.description), textWidth, FONT_DETAIL - 1) : []))
+          : [];
+        const entryH = text.length * LINE_LABEL + described.length * (LINE_DETAIL - 2) + entryGap;
+        if (cursorY + entryH - originY > budget - 2 * LINE_DETAIL) {
+          dropped += group.members.length;
+          continue;
+        }
         const swatchY = cursorY - FONT_LABEL / 3;
         lines.push(
           `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
           `stroke="${timeColour}" stroke-width="${Math.max(timeWidth, 1.5)}"` +
           `${timeDash ? ` stroke-dasharray="${timeDash}"` : ''}/>`,
         );
-        for (const wrapped of wrapText(`${t.name} · ${formatSi(t.t_s, 's')}`, textWidth, FONT_DETAIL)) {
+        for (const wrapped of text) {
           lines.push(
             `<text x="${textX}" y="${cursorY}" class="tc-legend" fill="${th.foreground}" ` +
             `font-size="${FONT_DETAIL}">${escapeXml(wrapped)}</text>`,
           );
           cursorY += LINE_LABEL;
         }
-        if (showDetail && t.description) {
-          for (const wrapped of wrapText(oneLine(t.description), textWidth, FONT_DETAIL - 1)) {
-            lines.push(
-              `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
-              `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
-            );
-            cursorY += LINE_DETAIL - 2;
-          }
+        for (const wrapped of described) {
+          lines.push(
+            `<text x="${textX}" y="${cursorY}" class="tc-legend-muted" fill="${th.label}" ` +
+            `font-size="${FONT_DETAIL - 1}">${escapeXml(wrapped)}</text>`,
+          );
+          cursorY += LINE_DETAIL - 2;
         }
         cursorY += entryGap;
       }
