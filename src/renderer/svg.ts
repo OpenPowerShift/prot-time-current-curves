@@ -1324,7 +1324,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
   const legendMode = resolveLegendMode(opts.page?.legend);
 
   /** Which amps the legend quotes pickups in; see `pickupLabel`. */
-  const declaredCurrents = opts.page?.legend?.currents;
+  const declaredCurrents = opts.page?.legend?.I_units;
   const legendCurrents: LegendCurrents | undefined =
     declaredCurrents === 'primary' || declaredCurrents === 'secondary'
       || declaredCurrents === 'both'
@@ -1395,8 +1395,15 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const xScale = new LogScale(I_min, I_max, leftMargin, leftMargin + plotW);
 
-  const showFaultLabels = opts.page?.faults?.labels !== false;
-  const showFaultCurrents = opts.page?.faults?.currents !== false;
+  /*
+   * Which text each vertical rule carries. Faults and ratings are
+   * styled by their own page blocks (`faults { }`, `currents { }`), each
+   * with `labels` (the name) and `values` (the figure beside it).
+   */
+  const ruleText: RuleText = (f) => {
+    const block = f.kind === 'rating' ? opts.page?.currents : opts.page?.faults;
+    return { labels: block?.labels !== false, values: block?.values !== false };
+  };
 
   /*
    * A second band of fault rules across the top, in the second axis's
@@ -1414,8 +1421,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    */
   const faultLayoutTop = secondAxis
     ? packFaultLabels(
-      faults, xScale, I_min, I_max, showFaultLabels, leftMargin + plotW,
-      showFaultCurrents, { factor: secondAxis.factor })
+      faults, xScale, I_min, I_max, ruleText, leftMargin + plotW, { factor: secondAxis.factor })
     : [];
   const faultRowsTop = faultLayoutTop.reduce((n, f) => Math.max(n, f.row + 1), 0);
 
@@ -1444,9 +1450,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
    * Stretching measures the band instead of reserving for it.
    */
   const stretch = opts.page?.stretch === true;
-  const faultLayout = packFaultLabels(
-    faults, xScale, I_min, I_max, showFaultLabels, leftMargin + plotW, showFaultCurrents,
-  );
+  const faultLayout = packFaultLabels(faults, xScale, I_min, I_max, ruleText, leftMargin + plotW);
   const faultRows = faultLayout.reduce((n, f) => Math.max(n, f.row + 1), 0);
 
   const faultBandH = faultRows > 0
@@ -2879,6 +2883,20 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       : timeStyle?.style === 'dashed' ? '6 4'
         : '2 4';
 
+  /*
+   * Rating rules (`currents { }`) have their own style block. They
+   * used to take the required-time style, so changing how clearance
+   * times were drawn changed every rating on the sheet as well. The
+   * defaults are the ones they had.
+   */
+  const ratingStyle = opts.page?.currents;
+  const ratingWidth = ratingStyle?.width_px ?? 1.4;
+  const ratingColour = ratingStyle?.color ?? th.label;
+  const ratingDash =
+    ratingStyle?.style === 'solid' ? ''
+      : ratingStyle?.style === 'dashed' ? '6 4'
+        : '2 4';
+
   const faultStyle = opts.page?.faults;
   const FAULT_DASHES = ['5 4', '10 4', '2 3', '10 3 2 3', '16 4', '6 3 2 3 2 3'];
   const faultWidth = faultStyle?.width_px ?? 1.4;
@@ -2982,7 +3000,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
      * other axis, carried onto this one.
      */
     const isRating = f.kind === 'rating';
-    const dash = isRating ? timeDash : faultDash(i);
+    const dash = isRating ? ratingDash : faultDash(i);
     out.push(
       `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(topMargin + plotH).toFixed(1)}" class="${isRating ? 'tc-current-rating' : 'tc-fault'}" ` +
       /* `data-fault` and `data-current` stay adjacent: they are scraped
@@ -2991,7 +3009,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       /* Full strength, matching the legend swatch. At 0.7 the rule read
        * as a fainter colour than the entry naming it, so the two did not
        * obviously belong together. */
-      `stroke="${isRating ? timeColour : faultColour}" stroke-width="${isRating ? timeWidth : faultWidth}"` +
+      `stroke="${isRating ? ratingColour : faultColour}" stroke-width="${isRating ? ratingWidth : faultWidth}"` +
       `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
     );
   }
@@ -3239,7 +3257,7 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     for (const t of timesOnPlot) {
       const py = yScale.toPx(t.t_s);
       if (!Number.isFinite(py)) continue;
-      const caption = `${t.name} · ${formatSi(t.t_s, 's')}`;
+      const caption = opts.page?.times?.values === false ? t.name : `${t.name} · ${formatSi(t.t_s, 's')}`;
       /*
        * `at_I` puts the caption where the reader is looking -- beside
        * the curve the clearance applies to, say -- instead of at the
@@ -4214,11 +4232,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     for (const { i, px, row, flipped, caption } of faultLayout) {
       const labelY = faultBandY + row * (LINE_DETAIL - 1);
       const isRating = faults[i]?.kind === 'rating';
-      const dash = isRating ? timeDash : faultDash(i);
-      const colour = isRating ? timeColour : faultColour;
+      const dash = isRating ? ratingDash : faultDash(i);
+      const colour = isRating ? ratingColour : faultColour;
       out.push(
         `<line x1="${px.toFixed(1)}" y1="${(topMargin + plotH).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY - 9).toFixed(1)}" ` +
-        `class="${isRating ? 'tc-current-rating' : 'tc-fault'}" stroke="${colour}" stroke-width="${isRating ? timeWidth : faultWidth}"` +
+        `class="${isRating ? 'tc-current-rating' : 'tc-fault'}" stroke="${colour}" stroke-width="${isRating ? ratingWidth : faultWidth}"` +
         `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
       );
       out.push(
@@ -4246,11 +4264,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
     for (const { i, px, row, flipped, caption } of faultLayoutTop) {
       const labelY = topMargin - TOP_FAULT_BAND_DY - row * (LINE_DETAIL - 1);
       const isRating = faults[i]?.kind === 'rating';
-      const dash = isRating ? timeDash : faultDash(i);
-      const colour = isRating ? timeColour : faultColour;
+      const dash = isRating ? ratingDash : faultDash(i);
+      const colour = isRating ? ratingColour : faultColour;
       out.push(
         `<line x1="${px.toFixed(1)}" y1="${topMargin.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(labelY + 3).toFixed(1)}" ` +
-        `class="${isRating ? 'tc-current-rating' : 'tc-fault'}" stroke="${colour}" stroke-width="${isRating ? timeWidth : faultWidth}"` +
+        `class="${isRating ? 'tc-current-rating' : 'tc-fault'}" stroke="${colour}" stroke-width="${isRating ? ratingWidth : faultWidth}"` +
         `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
       );
       out.push(
@@ -4893,11 +4911,11 @@ export function renderSvg(doc: Document | undefined, opts: RenderOptions): strin
       for (const i of shownFaults) {
         const swatchY = faultsY - FONT_LABEL / 3;
         const isRating = faults[i].kind === 'rating';
-        const dash = isRating ? timeDash : faultDash(i);
-        const swatchColour = isRating ? timeColour : faultColour;
+        const dash = isRating ? ratingDash : faultDash(i);
+        const swatchColour = isRating ? ratingColour : faultColour;
         lines.push(
           `<line x1="${originX}" y1="${swatchY}" x2="${originX + swatchW}" y2="${swatchY}" ` +
-          `stroke="${swatchColour}" stroke-width="${Math.max(isRating ? timeWidth : faultWidth, 1.5)}"` +
+          `stroke="${swatchColour}" stroke-width="${Math.max(isRating ? ratingWidth : faultWidth, 1.5)}"` +
           `${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
         );
         for (const wrapped of faultText.get(i) ?? []) {
@@ -5269,35 +5287,37 @@ interface PlacedFault {
  * sized to the rows it needs, then reused by the drawing pass -- one
  * packing, so the reserve and the labels can never disagree.
  */
+/** Whether a rule shows its name, and its figure beside the name. */
+type RuleText = (f: FaultEntry) => { labels: boolean; values: boolean };
+
 function packFaultLabels(
   faults: FaultEntry[],
   xScale: LogScale,
   I_min: number,
   I_max: number,
-  showLabels: boolean,
+  /** Whether each rule shows its name, and its figure beside it. */
+  text: RuleText,
   /** Right-hand edge of the plot; labels may not cross it. */
   plotRight: number,
-  /** Print each current beside its name. */
-  showCurrents: boolean,
   /**
-   * Caption the current in another frame, scaled by this factor.
+   * The top band of a second-axis sheet: the figure alone, in another
+   * frame, scaled by this factor.
    *
-   * The top band of a second-axis sheet is packed by a second call
-   * with the factor onto that level, so its captions read in the amps
-   * of the scale they sit under. Measured here with the name, because
-   * the caption's width is what decides which row it lands on -- and
-   * the two bands pack independently, since `2.73 kA` and `8.2 kA` are
-   * not the same width.
+   * Only the figure, because the name is already under the bottom
+   * axis; printing it twice made a busy sheet read as two lists. The
+   * figure belongs here, under the scale it is in. Measured here,
+   * because the caption's width is what decides which row it lands on
+   * -- and the two bands pack independently, since `2.73 kA` and
+   * `8.2 kA` are not the same width.
    */
   frame?: { factor: number },
 ): PlacedFault[] {
-  if (!showLabels) return [];
-
   const placed: PlacedFault[] = [];
   const taken: Array<{ left: number; right: number; row: number }> = [];
 
   const visible = faults
     .map((f, i) => ({ f, i, I: f.I_view ?? f.I_A }))
+    .filter(({ f }) => text(f).labels && (frame == null || text(f).values))
     .filter(({ I }) => I > 0 && I >= I_min && I <= I_max)
     .sort((a, b) => a.I - b.I);
 
@@ -5316,9 +5336,11 @@ function packFaultLabels(
      * the name -- and it is measured here, with the name, because
      * this is what decides which row the label lands on.
      */
-    const caption = showCurrents && Number.isFinite(I)
-      ? `${f.name} \u00b7 ${formatSi(I * (frame?.factor ?? 1), 'A')}`
-      : f.name;
+    const caption = frame
+      ? formatSi(I * frame.factor, 'A')
+      : text(f).values && Number.isFinite(I)
+        ? `${f.name} \u00b7 ${formatSi(I, 'A')}`
+        : f.name;
 
     const width = caption.length * FONT_DETAIL * CHAR_ADVANCE + 10;
     const flipped = px + width > plotRight;

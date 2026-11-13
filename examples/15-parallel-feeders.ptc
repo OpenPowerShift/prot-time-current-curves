@@ -312,7 +312,7 @@ page {
     title = "Feeders";
     position = "bottom_right";
     swatch = "box";
-    currents = "both";
+    I_units = "both";
   };
   curves      = {
     palette = "high_contrast";

@@ -876,7 +876,7 @@ view { voltage = "HV"; }
 
   it('converts by the CT ratio when asked for secondary', () => {
     /* 600/5 is a ratio of 120: 720 A primary is 6 A at the relay. */
-    const svg = render('legend = { currents = "secondary"; };');
+    const svg = render('legend = { I_units = "secondary"; };');
     expect(svg).toContain('6 A sec');
     expect(svg).toContain('40 A sec');
     /* The primary figure gives way to it, rather than both being shown. */
@@ -884,7 +884,7 @@ view { voltage = "HV"; }
   });
 
   it('shows both when asked for both', () => {
-    const svg = render('legend = { currents = "both"; };');
+    const svg = render('legend = { I_units = "both"; };');
     expect(svg).toContain('720 A (6 A sec)');
   });
 
@@ -895,7 +895,7 @@ view { voltage = "HV"; }
      * decides the legend; neither implies the other.
      */
     const svg = parseAndRender(
-      STUDY('legend = { currents = "secondary"; };').replace(
+      STUDY('legend = { I_units = "secondary"; };').replace(
         'view { voltage = "HV"; }', 'view { voltage = "HV"; axis = "primary"; }'),
       { theme: 'light' },
     ).svg;
@@ -910,7 +910,7 @@ view { voltage = "HV"; }
      * element with no ratio to convert with is named, not left to look
      * like a very large secondary setting.
      */
-    const svg = render('legend = { currents = "secondary"; };');
+    const svg = render('legend = { I_units = "secondary"; };');
     const notes = [...svg.matchAll(/font-style="italic"[^>]*>([^<]*)</g)]
       .map((m) => m[1]).join(' ');
     expect(notes).toContain('no ct_ratio');

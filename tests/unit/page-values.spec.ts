@@ -50,7 +50,7 @@ describe('a misspelt value', () => {
 describe('a correct value', () => {
   const GOOD = [
     'legend = { style = "inside"; };',
-    'legend = { position = "top_right"; swatch = "circle"; currents = "both"; };',
+    'legend = { position = "top_right"; swatch = "circle"; I_units = "both"; };',
     'curves = { palette = "okabe_ito"; };',
     'points = { shape = "cross"; };',
     'theme = "dark";',

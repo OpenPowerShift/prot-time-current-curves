@@ -138,6 +138,25 @@ export const RENAMED_WITH_REASON: Readonly<Record<string, { to: string; why: str
  * nothing anywhere said why.
  */
 /**
+ * Page settings renamed per block, keyed `block.old`.
+ *
+ * `currents` named two unrelated settings before the `currents { }`
+ * rating block existed -- which side of the CT the legend quotes, and
+ * whether a fault's figure is printed -- and then a third thing. Each
+ * now has a name of its own.
+ */
+export const PAGE_RENAMED: Readonly<Record<string, { to: string; why: string }>> = {
+  'legend.currents': {
+    to: 'I_units',
+    why: 'it chooses primary or secondary amps, which is what I_units means on an element',
+  },
+  'faults.currents': {
+    to: 'values',
+    why: '`currents` is the block of rating rules; `values` is the figure beside each name',
+  },
+};
+
+/**
  * Keys `page` takes directly, as `key = value;`. Everything else in a
  * page is one of the sub-blocks in `PAGE_SUB_FIELDS`.
  */
@@ -147,7 +166,7 @@ export const PAGE_TOP_KEYS: readonly string[] = [
 ];
 
 export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'currents', 'notes',
+  legend: ['show', 'style', 'position', 'color', 'swatch', 'title', 'I_units', 'notes',
     'comment'],
   axes: ['color', 'grid_color', 'grid_minor_color', 'grid_style', 'grid_minor_style',
     'label_color', 'label_size_px', 'tick_size_px', 'frame', 'mirror'],
@@ -156,8 +175,9 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
   leaders: ['show', 'style', 'width_px', 'color', 'label_offset_px'],
   scale: ['auto', 'x_min', 'x_max', 'y_min', 'y_max', 'tick_density'],
   margins_mm: ['top', 'right', 'bottom', 'left'],
-  faults: ['width_px', 'color', 'style', 'labels', 'currents'],
-  times: ['width_px', 'color', 'style', 'labels'],
+  faults: ['width_px', 'color', 'style', 'labels', 'values'],
+  times: ['width_px', 'color', 'style', 'labels', 'values'],
+  currents: ['width_px', 'color', 'style', 'labels', 'values'],
   footer: ['left', 'center', 'right', 'font_size_px', 'color', 'border'],
 };
 
@@ -2827,9 +2847,26 @@ if (kwName === 'flex_points') {
     const accepts = PAGE_SUB_FIELDS[name] ?? [];
     const out: Record<string, PageSubValue> = {};
     while (!this.at('RBRACE') && !this.at('EOF')) {
-      const key = this.eat('KW') ?? this.eat('IDENT');
+      let key = this.eat('KW') ?? this.eat('IDENT');
       if (!key) { this.pos++; continue; }
-      if (accepts.length > 0) this.noteUnknownKey(`page ${name}`, key, accepts);
+      /*
+       * A rename that depends on the block: `currents` was the old name
+       * of two different settings, so the global rename table cannot
+       * say what it became. Read under the new name so the study still
+       * draws as it did; the error carries the rewrite.
+       */
+      const renamed = PAGE_RENAMED[`${name}.${key.image}`];
+      if (renamed) {
+        this.errors.push({
+          message: `"${key.image}" in page ${name} was renamed to "${renamed.to}": ${renamed.why}`,
+          line: key.line, column: key.col, offset: key.start, length: key.end - key.start,
+          severity: 'error', code: 'RENAMED_KEY',
+          fix: [{ offset: key.start, length: key.image.length, text: renamed.to }],
+        });
+        key = { ...key, image: renamed.to };
+      } else if (accepts.length > 0) {
+        this.noteUnknownKey(`page ${name}`, key, accepts);
+      }
       this.expect('EQUALS', '=');
 
       const t = this.peek();
@@ -3610,7 +3647,7 @@ function applyPageSubBlock(
         color: str('color'),
         swatch: str('swatch') as 'line' | 'box' | 'circle' | undefined,
         title: str('title'),
-        currents: str('currents') as import('./ast.js').LegendCurrents | undefined,
+        I_units: str('I_units') as import('./ast.js').LegendCurrents | undefined,
         notes: bool('notes'),
         comment: lines('comment'),
       };
@@ -3685,7 +3722,7 @@ function applyPageSubBlock(
         color: str('color'),
         style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
         labels: bool('labels'),
-        currents: bool('currents'),
+        values: bool('values'),
       };
       break;
     case 'times':
@@ -3695,6 +3732,17 @@ function applyPageSubBlock(
         color: str('color'),
         style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
         labels: bool('labels'),
+        values: bool('values'),
+      };
+      break;
+    case 'currents':
+      page.currents = {
+        loc: page.loc,
+        width_px: num('width_px'),
+        color: str('color'),
+        style: str('style') as 'solid' | 'dashed' | 'dotted' | undefined,
+        labels: bool('labels'),
+        values: bool('values'),
       };
       break;
     case 'footer':

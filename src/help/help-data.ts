@@ -145,7 +145,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   quantity:    M('view', 'Which current the abscissa is: any (the default), phase, I1, I2, 3I2, I0, 3I0. Naming one opts into a strict sheet.', 'quantity = I2;'),
   condition:   M('view', 'The fault or scenario this sheet depicts. Gives the ratios that convert curves onto the axis and suppress what the condition cannot operate.', 'condition = "1ph min";'),
   subtitle:    M('view', 'Second line of the sheet\u2019s heading; overrides page { title { subtitle } }.', 'subtitle = "480 V earth fault at 33 kV";'),
-  'legend.currents': M('page', 'Which amps the legend quotes a pickup in: primary, secondary, or both. Independent of view { axis }.', 'currents = "both";'),
+  'legend.I_units': M('page', 'Which amps the legend quotes a pickup in: primary, secondary, or both -- the same word an element uses for its settings. Independent of view { axis }.', 'I_units = "both";'),
 
   // annotate -- where it goes
   on_curve:    M('annotate', 'The characteristic being marked.', 'on_curve = R_FDR:51;'),
@@ -195,7 +195,7 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   /* `legend` or `footer` -- the two most-reached-for blocks on the      */
   /* page -- explained nothing.                                          */
   /* ------------------------------------------------------------------ */
-  legend:      M('page', 'The identification panel: which curves are drawn, their settings, the conditions marked, and the tool\u2019s notes. `style` decides whether it is a gutter, floated over the plot, direct labels, or absent.', 'legend = { style = "column"; currents = "both"; };'),
+  legend:      M('page', 'The identification panel: which curves are drawn, their settings, the conditions marked, and the tool\u2019s notes. `style` decides whether it is a gutter, floated over the plot, direct labels, or absent.', 'legend = { style = "column"; I_units = "both"; };'),
   footer:      M('page', 'Three text slots along the foot of the sheet -- left, center, right. Each expands [meta.*] macros, so a drawing number written once in `meta` appears here.', 'footer = { left = "[meta.reference]"; right = "Rev [meta.revision]"; };'),
   axes:        M('page', 'Ink and weight for the axis furniture: frame, gridlines, tick labels. Kept recessive so the curves carry the eye.', 'axes = { color = "#8a8983"; grid_color = "#cfcec8"; };'),
   curves:      M('page', 'How the characteristics are drawn as a set: which palette, the default line weight, and how far apart coincident curves are pulled. An individual curve overrides the first two.', 'curves = { palette = "okabe_ito"; line_width_px = 2.0; };'),
@@ -276,8 +276,11 @@ export const KEYWORD_HELP: Record<string, HelpEntry> = {
   'curves.nudge_px': M('page', 'Separation drawn between curves that coincide, in pixels (default 3; 0 draws them on top of one another). Perpendicular to the line and symmetric, so the pair\'s centre is the true position, and declared in the notes.', 'nudge_px = 3;'),
   'legend.style': M('page', 'How the panel is laid out: `column` (a gutter), `inside` (floated over the plot), `direct` (no panel, each curve labelled in place), `none`.', 'style = "column";'),
   'legend.comment': M('page', 'Your own standing text at the foot of the panel, under a `Comment` heading -- distinct from `Notes`, which the tool writes about what it could not draw. One string, or a list of lines.', 'comment = ["Checked against issue D."];'),
-  'faults.currents': M('page', 'Print each fault\u2019s current beside its name under the axis. Defaults to true -- the figure is the reason the rule is drawn. Turn it off where a dozen conditions at similar currents make a band of numbers and the legend already quotes them.', 'currents = false;'),
+  'faults.values': M('page', 'Print each fault\u2019s current beside its name under the axis. Defaults to true -- the figure is the reason the rule is drawn. Turn it off where a dozen conditions at similar currents make a band of numbers and the legend already quotes them. `times { values }` and `currents { values }` do the same for those rules.', 'values = false;'),
+  'times.values': M('page', 'Print each required time beside its name. Defaults to true.', 'values = false;'),
+  'currents.values': M('page', 'Print each rating\u2019s current beside its name under the axis. Defaults to true.', 'values = false;'),
   labels:      M('page', 'Draw the names under the axis at all. Off leaves the rules unlabelled, for a sheet whose legend carries the identification.', 'labels = true;'),
+  values:      M('page', 'Print each rule\u2019s figure beside its name. Defaults to true. In faults { }, times { } and currents { } alike.', 'values = false;'),
   'faults.type': M('faults', 'What kind of fault, which fixes the ratios between phase current and the sequence components -- so a component you did not declare can be derived.', 'type = single_phase_earth;'),
   'element.view': M('element', 'Sheets this curve belongs on, by `view` name. Absent means every sheet.', 'views = ["Phase", "Negative sequence"];'),
   from:        M('annotate', 'One end of a span: a dimension between two figures the study names, with no curve at either end. The unit decides the orientation -- two times draw a vertical span (anchored by at_I or a condition), two currents a horizontal one (anchored by at_t).', 'from = 300 ms; to = 800 ms; at_I = 2 kA;'),
@@ -375,10 +378,15 @@ export const BLOCK_FIELDS: Record<string, string[]> = {
                'time_pad', 'time_pad_low', 'time_pad_high', 'comment'],
   page:        ['size', 'orientation', 'theme', 'watermark', 'border', 'title', 'footer',
                'margins_mm', 'scale', 'legend', 'axes', 'curves', 'points', 'leaders',
-               'faults', 'times'],
+               'faults', 'times', 'currents'],
+  /* The rule-style sub-blocks share one vocabulary. Keyed by path so
+   * they are not mistaken for the top-level blocks of the same name. */
+  'page.faults':   ['width_px', 'color', 'style', 'labels', 'values'],
+  'page.times':    ['width_px', 'color', 'style', 'labels', 'values'],
+  'page.currents': ['width_px', 'color', 'style', 'labels', 'values'],
   /* `page` sub-blocks, so asking inside one lists what it accepts
    * rather than repeating the page's own fields. */
-  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'currents', 'comment',
+  legend:      ['show', 'style', 'position', 'title', 'color', 'swatch', 'I_units', 'comment',
                'notes'],
   axes:        ['color', 'grid_color', 'label_color', 'label_size_px', 'tick_size_px',
                'frame', 'mirror'],
@@ -539,6 +547,11 @@ export const FIELD_VALUES: Record<string, ValueChoice[]> = {
     V('"dotted"', 'dotted rule'),
   ],
   'times.style': [
+    V('"solid"', 'unbroken rule'),
+    V('"dashed"', 'dashed rule'),
+    V('"dotted"', 'dotted rule (default)'),
+  ],
+  'currents.style': [
     V('"solid"', 'unbroken rule'),
     V('"dashed"', 'dashed rule'),
     V('"dotted"', 'dotted rule (default)'),

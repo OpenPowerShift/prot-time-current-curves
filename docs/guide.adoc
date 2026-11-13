@@ -398,11 +398,11 @@ no anchor at all.
 
 Each rule is captioned with its name *and its current* --
 `Board max · 6.2 kA`, the figure it is drawn for. Turn that off with
-`page { faults = { currents = false; }; }`.
+`page { faults = { values = false; }; }`.
 
 Style them with `page { times = { color = ...; width_px = ...; style =
-"solid" | "dashed" | "dotted"; labels = false; }; }`, which mirrors
-`page { faults }`. They are drawn in a different ink from the fault
+"solid" | "dashed" | "dotted"; labels = false; }; }`; `page { faults }`
+and `page { currents }` take the same keys. They are drawn in a different ink from the fault
 rules by default, so it is never a question which axis a rule belongs
 to.
 
@@ -1660,7 +1660,7 @@ page {
         title    = "Protection";
         color    = "#222222";
         swatch   = "line";         # line, box, circle
-        currents = "both";         # primary, secondary, both
+        I_units  = "both";         # primary, secondary, both
         notes    = true;
     };
 }
@@ -1857,7 +1857,7 @@ is doing:
 [source,tc]
 ----
 page {
-    legend = { currents = "secondary"; };   # or "both", or "primary"
+    legend = { I_units = "secondary"; };   # or "both", or "primary"
 }
 ----
 

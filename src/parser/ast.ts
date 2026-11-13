@@ -890,7 +890,7 @@ export interface PageLegend extends BaseNode {
    * `ct_ratio`; without one there is nothing to convert and the pickup
    * stays primary.
    */
-  currents?: LegendCurrents;
+  I_units?: LegendCurrents;
   /**
    * The author's own remarks, drawn at the foot of the panel.
    *
@@ -1021,9 +1021,24 @@ export interface PageFaults extends BaseNode {
    * is a band of numbers, and an office that quotes them in the
    * legend instead wants the band back.
    */
-  currents?: boolean;
+  values?: boolean;
   /** Draw the marker labels below the axis. Defaults to true. */
   labels?: boolean;
+}
+
+/**
+ * Styling for the vertical rules a `currents` block declares (ratings,
+ * load limits). The same keys as `PageFaults` and `PageTimes`: each
+ * kind of rule has a block of its own name with one vocabulary.
+ */
+export interface PageCurrents extends BaseNode {
+  width_px?: number;
+  color?: string;
+  style?: 'solid' | 'dashed' | 'dotted';
+  /** Draw the rule names below the axis. Defaults to true. */
+  labels?: boolean;
+  /** Print each figure beside its name. Defaults to true. */
+  values?: boolean;
 }
 
 /** Styling for the horizontal rules a `times` block declares. */
@@ -1033,6 +1048,8 @@ export interface PageTimes extends BaseNode {
   style?: 'solid' | 'dashed' | 'dotted';
   /** Draw the rule labels on the plot. Defaults to true. */
   labels?: boolean;
+  /** Print each time beside its name. Defaults to true. */
+  values?: boolean;
 }
 
 export interface PageBlock extends BaseNode {
@@ -1048,6 +1065,7 @@ export interface PageBlock extends BaseNode {
   leaders?: PageLeaders;
   faults?: PageFaults;
   times?: PageTimes;
+  currents?: PageCurrents;
   title?: string | PageTitle;
   footer?: PageFooter;
   theme?: 'light' | 'dark' | 'monochrome' | 'print';

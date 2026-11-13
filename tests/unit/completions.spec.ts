@@ -76,7 +76,7 @@ describe('finding the block the cursor is in', () => {
     ['grade', 'grade {\n  ‸\n}\n', 'scenario'],
     ['solve', 'grade {\n solve {\n  ‸\n }\n}\n', 'strategy'],
     ['page', 'page {\n  ‸\n}\n', 'orientation'],
-    ['page legend', 'page {\n legend = {\n  ‸\n };\n}\n', 'currents'],
+    ['page legend', 'page {\n legend = {\n  ‸\n };\n}\n', 'I_units'],
     ['page axes', 'page {\n axes = {\n  ‸\n };\n}\n', 'mirror'],
   ];
 

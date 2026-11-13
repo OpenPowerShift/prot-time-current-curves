@@ -1571,7 +1571,11 @@ page {
         color    = "#c0392b";
         style    = "dashed";              // omit for a distinct dash per fault
         labels   = true;                  // names below the axis
+        values   = true;                  // the current beside each name
     }
+
+    times    { style = "solid"; }        // required times: same keys
+    currents { style = "dotted"; }       // ratings: same keys
 
     curves {
         palette       = "okabe_ito";      // colour-blind-friendly palette
