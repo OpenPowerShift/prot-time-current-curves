@@ -312,8 +312,6 @@ export const DIAGNOSTICS: Readonly<Record<string, DiagnosticInfo>> = {
     gloss: 'A custom sheet giving only one of `width_mm` and `height_mm`.' },
   PAGE_MARGIN_NEGATIVE: { severity: ['error'],
     gloss: 'A negative paper margin.' },
-  PAGE_SCALE_INVERTED: { severity: ['error'],
-    gloss: 'A manual axis scale whose minimum is at or above its maximum.' },
   WATERMARK_ON_FINAL: { severity: ['warning'],
     gloss: 'A draft watermark on a study whose revision reads as issued.' },
   UNRESOLVED_REFERENCE: { severity: ['error'],

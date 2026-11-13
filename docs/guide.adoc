@@ -1415,12 +1415,15 @@ view {
     current_max = 30 kA;
     time_min    = 20 ms;
     time_max    = 100 s;
+    tick_density = "dense";        # minor gridlines: sparse, normal, dense
     current_pad = 0.2;             # padding when bounds are automatic
 }
 ----
 
 Set the bounds explicitly if the automatic range is unhelpful --
-auto-ranging can run wide and squash the curves.
+auto-ranging can run wide and squash the curves. Everything about a
+sheet's axes is on its view; a study with one sheet uses one unnamed
+`view { }`.
 
 ==== Padding, a second axis, and secondary amps
 
@@ -1690,19 +1693,12 @@ page {
         frame         = true;
         mirror        = false;     # repeat the scales top and right
     };
-    scale = {
-        auto         = true;
-        tick_density = "normal";   # sparse, normal, dense
-    };
 }
 ----
 
 Keep the grid recessive: it is read *off*, not looked at. Major and
 minor lines should differ (`grid_minor_style`) or finding a decade
 means counting.
-
-`scale` can also fix the window with `x_min`/`x_max`/`y_min`/`y_max`,
-though `view { current_min ... }` is the usual place.
 
 *Curves, points and leaders*
 

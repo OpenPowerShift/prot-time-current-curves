@@ -173,6 +173,7 @@ view {
   stages = "composite";
   axis = "primary";
   current_pad = 0.25;
+  tick_density = "normal";
 }
 
 # ---- page: sheet geometry, decoration, and theme. ------------------
@@ -190,9 +191,6 @@ page {
     subtitle = "Every block in the language, once";
   };
 
-  scale {
-    tick_density = "normal";
-  }
   legend {
     show = true;
     title = "Curves";

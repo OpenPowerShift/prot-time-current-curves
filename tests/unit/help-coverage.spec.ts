@@ -49,7 +49,7 @@ describe('hover help', () => {
   it('explains the page sub-blocks by name', () => {
     /* The reported case: `legend` and `footer` said nothing. */
     for (const block of ['legend', 'footer', 'axes', 'curves', 'points', 'leaders',
-                         'scale', 'title', 'margins_mm']) {
+                         'title', 'margins_mm']) {
       expect(KEYWORD_HELP[block], block).toBeDefined();
       expect(KEYWORD_HELP[block].summary.length, block).toBeGreaterThan(20);
     }

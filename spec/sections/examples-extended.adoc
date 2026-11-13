@@ -51,11 +51,6 @@ page {
     theme        = "light";
     watermark    = "DRAFT";
 
-    scale {
-        auto = true;
-        tick_density = "normal";
-    }
-
     legend {
         show     = true;
         position = "right";

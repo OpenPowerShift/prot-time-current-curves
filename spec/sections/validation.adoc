@@ -150,8 +150,6 @@ Keying it on the namespace string rejects a legal dial of 3.0 on
   `height_mm` (the other is missing).* *Error*.
 . *A `page { margins_mm = { x = ... ; } }` where any side is
   negative.* *Error*.
-. *A `page { scale = { auto = false; ... } }` where `x_min >=
-  x_max` or `y_min >= y_max`.* *Error*.
 . *A `page { legend = { position = "right"; } }` combined with
   `page { title = { ... long title that exceeds 30 chars ...; } }`.*
   *Warning* when in `landscape + legend.right` mode the available

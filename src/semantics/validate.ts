@@ -2190,18 +2190,6 @@ function validatePage(ctx: Ctx): void {
     }
   }
 
-  const scale = page.scale;
-  if (scale && scale.auto === false) {
-    if (scale.x_min != null && scale.x_max != null && scale.x_min >= scale.x_max) {
-      add(ctx, 'PAGE_SCALE_INVERTED', 'error',
-        `page scale declares x_min (${scale.x_min}) at or above x_max (${scale.x_max})`, page.loc);
-    }
-    if (scale.y_min != null && scale.y_max != null && scale.y_min >= scale.y_max) {
-      add(ctx, 'PAGE_SCALE_INVERTED', 'error',
-        `page scale declares y_min (${scale.y_min}) at or above y_max (${scale.y_max})`, page.loc);
-    }
-  }
-
   if (page.watermark && String(ctx.study.meta.study ?? '').toLowerCase() === 'final') {
     add(ctx, 'WATERMARK_ON_FINAL', 'warning',
       `page carries the watermark "${page.watermark}" while meta.study is "final"; ` +

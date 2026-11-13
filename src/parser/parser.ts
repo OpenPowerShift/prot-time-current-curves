@@ -173,7 +173,6 @@ export const PAGE_SUB_FIELDS: Readonly<Record<string, readonly string[]>> = {
   curves: ['palette', 'line_width_px', 'auto_color', 'nudge_px'],
   points: ['color', 'shape', 'size_px', 'outline'],
   leaders: ['show', 'style', 'width_px', 'color', 'label_offset_px'],
-  scale: ['auto', 'x_min', 'x_max', 'y_min', 'y_max', 'tick_density'],
   margins_mm: ['top', 'right', 'bottom', 'left'],
   faults: ['width_px', 'color', 'style', 'labels', 'values'],
   times: ['width_px', 'color', 'style', 'labels', 'values'],
@@ -552,6 +551,13 @@ class Parser {
   /** The source text, which a migration fix copies blocks out of. */
   private readonly src: string;
 
+  /*
+   * Recorded for the document-level migration of `page { scale }`,
+   * which has to see every view to say where its settings go.
+   */
+  private scaleBlock: { first: number; last: number } | null = null;
+  private readonly viewSpans: Array<{ keys: Set<string>; close: Token }> = [];
+
   constructor(tokens: Token[], lexErrors: readonly ParseError[] = [], src = '') {
     this.tokens = tokens;
     this.src = src;
@@ -850,7 +856,63 @@ class Parser {
         this.pos++;
       }
     }
+    this.notePageScale();
     return { type: 'document', items, loc: { line: 1, column: 1, offset: 0 } };
+  }
+
+  /**
+   * `page { scale { ... } }`, removed: a sheet's axes are the view's.
+   *
+   * Its bounds (`x_min` ...) were validated and never read, so a study
+   * that set them was drawn auto-fitted; `tick_density` was the only
+   * thing in it that did anything. Axis limits and tick density now
+   * live together on the `view` they shape.
+   *
+   * The fix moves each setting onto every view that does not already
+   * state it (an unnamed `view { }` is written if there are none), and
+   * drops `auto`, which said nothing a view without limits does not.
+   */
+  private notePageScale(): void {
+    if (!this.scaleBlock) return;
+    const first = this.tokens[this.scaleBlock.first];
+    const last = this.tokens[this.scaleBlock.last];
+    const RENAME: Record<string, string> = {
+      x_min: 'current_min', x_max: 'current_max', y_min: 'time_min', y_max: 'time_max',
+      tick_density: 'tick_density',
+    };
+    const body = this.src.slice(first.start, tokenEnd(last));
+    const settings = [...body.matchAll(/\b(\w+)\s*=\s*([^;{}]+?)\s*;/g)]
+      .filter((m) => RENAME[m[1]] != null)
+      .map((m) => ({ key: RENAME[m[1]], value: m[2] }));
+
+    const err: ParseError = {
+      message: '"scale" was removed from the page: axis limits and tick density are set on '
+        + 'the view (current_min, current_max, time_min, time_max, tick_density)',
+      line: first.line, column: first.col, offset: first.start, length: first.image.length,
+      severity: 'error', code: 'REMOVED_KEY',
+    };
+
+    const fix: TextEdit[] = [cutLines(this.src, first.start, tokenEnd(last))];
+    if (settings.length > 0 && this.viewSpans.length === 0) {
+      const lines = settings.map((s) => `  ${s.key} = ${s.value};`).join('\n');
+      fix.push({ offset: this.src.length, length: 0,
+        text: `${this.src.endsWith('\n') ? '' : '\n'}\nview {\n${lines}\n}\n` });
+    }
+    for (const view of this.viewSpans) {
+      const missing = settings.filter((s) => !view.keys.has(s.key));
+      if (missing.length === 0) continue;
+      const lineStart = this.src.lastIndexOf('\n', view.close.start - 1) + 1;
+      const ownLine = /^[ \t]*$/.test(this.src.slice(lineStart, view.close.start));
+      if (ownLine) {
+        fix.push({ offset: lineStart, length: 0,
+          text: missing.map((s) => `  ${s.key} = ${s.value};\n`).join('') });
+      } else {
+        fix.push({ offset: view.close.start, length: 0,
+          text: missing.map((s) => `${s.key} = ${s.value}; `).join('') });
+      }
+    }
+    err.fix = fix;
+    this.errors.push(err);
   }
 
   private parseTopLevel(): TopLevel | null {
@@ -2626,6 +2688,8 @@ if (kwName === 'flex_points') {
 
     /* Token spans of blocks nested in this view, for the removal fix. */
     const nestedSpans: Array<{ first: number; last: number; scoped: boolean }> = [];
+    /* Keys it sets, for the `page { scale }` migration. */
+    const viewKeys = new Set<string>();
 
     const v = ((): ViewBlock => {
       const v: ViewBlock = { type: 'view', loc: this.loc(head) };
@@ -2674,8 +2738,16 @@ if (kwName === 'flex_points') {
 
         const k = this.eat('KW') ?? this.eat('IDENT');
         if (!k) { this.pos++; continue; }
+        viewKeys.add(k.image);
         this.expect('EQUALS', '=');
         switch (k.image) {
+          case 'tick_density':
+            {
+              const d = this.keywordFrom('tick_density', 'sparse', 'normal', 'dense');
+              this.eat('SEMI');
+              if (d) v.tick_density = d as 'sparse' | 'normal' | 'dense';
+            }
+            break;
           case 'stages':
             {
               const v2 = this.matchKeyword('composite','individual');
@@ -2799,7 +2871,7 @@ if (kwName === 'flex_points') {
             break;
           }
           default:
-            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'second_axis', 'nudge_px', 'reference_ct', 'comment']);
+            this.noteUnknownKey('a view', k, ['name', 'default', 'voltage', 'axis', 'quantity', 'condition', 'title', 'subtitle', 'stages', 'current_min', 'current_max', 'time_min', 'time_max', 'tick_density', 'second_axis', 'nudge_px', 'reference_ct', 'comment']);
             this.parseScalarValue(); this.eat('SEMI');
         }
       }
@@ -2809,6 +2881,7 @@ if (kwName === 'flex_points') {
     this.expect('RBRACE', '}');
     const close = this.tokens[this.pos - 1];
     for (const span of nestedSpans) this.noteNestedInView(span, nameTok, close);
+    if (close?.kind === 'RBRACE') this.viewSpans.push({ keys: viewKeys, close });
     return v;
   }
 
@@ -2990,9 +3063,12 @@ if (kwName === 'flex_points') {
             p.size = this.parseSizeMm();
             continue;
           }
-          this.notePageKey(k, /* asBlock */ true);
+          /* `scale` is removed; `notePageScale` reports it with its move. */
+          if (k.image !== 'scale') this.notePageKey(k, /* asBlock */ true);
+          const keyIndex = this.tokens.indexOf(k);
           const fields = this.parsePageSubBlock(k.image);
           this.eat('SEMI');
+          if (k.image === 'scale') this.scaleBlock = { first: keyIndex, last: this.pos - 1 };
           applyPageSubBlock(p, k.image, fields);
           continue;
         }
@@ -3592,6 +3668,26 @@ export function lex(source: string) {
  */
 function tokenEnd(t: Token): number {
   return t.start + t.image.length;
+}
+
+/**
+ * Delete `start`..`end`, taking whole lines where the span has them to
+ * itself so no blank line is left behind.
+ */
+function cutLines(src: string, start: number, end: number): TextEdit {
+  const lineStart = src.lastIndexOf('\n', start - 1) + 1;
+  const nl = src.indexOf('\n', end);
+  const lineEnd = nl === -1 ? src.length : nl + 1;
+  const from = /^[ \t]*$/.test(src.slice(lineStart, start)) ? lineStart : start;
+  let to = /^[ \t;]*\r?\n?$/.test(src.slice(end, lineEnd)) ? lineEnd : end;
+  /* Between two blank lines, take one of them too, so the gap stays one line. */
+  const before = src.slice(src.lastIndexOf('\n', from - 2) + 1, from);
+  const nextNl = src.indexOf('\n', to);
+  const after = src.slice(to, nextNl === -1 ? src.length : nextNl + 1);
+  if (from === lineStart && /^[ \t]*\r?\n$/.test(before) && /^[ \t]*\r?\n$/.test(after)) {
+    to += after.length;
+  }
+  return { offset: from, length: to - from, text: '' };
 }
 
 function hoistFromView(

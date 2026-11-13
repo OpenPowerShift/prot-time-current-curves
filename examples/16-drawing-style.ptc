@@ -241,11 +241,6 @@ page {
     labels = true;
   };
 
-  scale  = {
-    auto = true;
-    tick_density = "dense";
-  };
-
   # `[meta.*]`, `[page]` and `[of]` macros are substituted at render.
   title = {
     text = "[meta.project] — [meta.study]";
@@ -275,4 +270,5 @@ view {
   current_max = 40 kA;
   time_min = 20 ms;
   time_max = 100 s;
+  tick_density = "dense";
 }

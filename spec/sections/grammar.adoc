@@ -659,9 +659,11 @@ view-member     ::= "name"          "=" string ";"
                   | "current_max"   "=" number current-unit ";"
                   | "time_min"      "=" number time-unit ";"
                   | "time_max"      "=" number time-unit ";"
+                  | "tick_density"  "=" tick-density-keyword ";"
                   | "second_axis"   "=" identifier ";"
                   | "reference_ct"  "=" ref ";"
                   | comment-asg ;
+tick-density-keyword ::= "sparse" | "normal" | "dense" ;
 view-stages-keyword ::= "composite" | "individual" ;
 view-axis-keyword ::= "primary" | "secondary" | "multiples" ;
 ----
@@ -681,7 +683,6 @@ page-member     ::= "size"           "=" size-value ";"
                   | "orientation"    "=" orientation-keyword ";"
                   | "margins_mm"     "=" margins-block ";"
                   | "margins_mm"     "=" number ";"   # all four sides
-                  | "scale"          "=" scale-block ";"
                   | "legend"         "=" legend-block ";"
                   | "axes"           "=" axes-block ";"
                   | "curves"         "=" curves-block ";"
@@ -708,14 +709,6 @@ margin-member   ::= "top"    "=" number "mm" ";"
                   | "bottom" "=" number "mm" ";"
                   | "left"   "=" number "mm" ";" ;
 
-scale-block     ::= "{" { scale-member } "}" ;
-scale-member    ::= "auto"   "=" boolean ";"
-                  | "x_min"  "=" number current-unit ";"
-                  | "x_max"  "=" number current-unit ";"
-                  | "y_min"  "=" number time-unit ";"
-                  | "y_max"  "=" number time-unit ";"
-                  | "tick_density" "=" tick-density-keyword ";" ;
-tick-density-keyword ::= "sparse" | "normal" | "dense" ;
 
 legend-block    ::= "{" { legend-member } "}" ;
 legend-member   ::= "show"      "=" boolean ";"

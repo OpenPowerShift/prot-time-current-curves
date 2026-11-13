@@ -1542,13 +1542,6 @@ page {
     margins_mm   = { top = 12; right = 12; bottom = 14; left = 14; };
     theme        = "light";
 
-    scale {
-        auto          = true;             // compute from fault range
-        x_min = 50 A; x_max = 50 kA;       // manual override when auto=false
-        y_min = 0.01 s; y_max = 1000 s;
-        tick_density  = "normal";         // sparse | normal | dense
-    }
-
     legend {
         show      = true;
         position  = "right";
@@ -1669,13 +1662,16 @@ honours `x_min / x_max / y_min / y_max` exactly.
   lowest t; the curve ought to start at its minimum at the left
   edge of the rendered plot.
 
-`tick_density` controls the *minor-subdivision* count on the
-logarithmic decades:
+`view { tick_density }` controls the *minor-subdivision* count on
+the logarithmic decades. It is a view setting, beside the axis limits
+(`current_min` ... `time_max`), because both shape one sheet's axes;
+the page carries no axis settings. (`page { scale }` is removed and
+migrated onto the views.)
 
 * `sparse` -- 1 sub-tick per decade (decades only).
 * `normal` -- 9 sub-ticks per decade (`1, 2, ..., 9`).
-* `dense` -- 9 sub-ticks per decade plus a `1/2, 1/5, 1/3` overlay
-  reserved for inspection.
+* `dense` -- the nine sub-ticks plus half-steps at 1.5, 2.5, 3.5,
+  4.5 and 7.5 of each decade, each drawn once.
 
 === Axes
 

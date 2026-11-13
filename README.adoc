@@ -937,10 +937,6 @@ page {
     labels = true;
   };
 
-  scale  = {
-    tick_density = "sparse";
-  };
-
   title  = {
     text = "Kingsford 33/11 kV — clearance times";
     subtitle = "Feeder and incomer against arc-flash, grid-code and withstand limits";
@@ -954,6 +950,7 @@ view {
   current_max = 30 kA;
   time_min = 20 ms;
   time_max = 20 s;
+  tick_density = "sparse";
 }
 ----
 ====
