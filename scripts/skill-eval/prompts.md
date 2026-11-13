@@ -60,8 +60,8 @@ auxiliary sheet; the BESS feeder load (592 A) only on the BESS sheet.
 
 ## 09 — Choose a setting
 Same chain as 08's BESS side. Choose the BESS feeder TMS so it sits
-half-way in time between the RMU and the incomer at the RMU fault
-(850 A). Margin 0.3 s.
+half-way in time between the RMU and the incomer at the 33 kV feeder
+fault (12 kA), which all three relays see. Margin 0.3 s.
 
 ## 10 — Minimum time of the curve
 Siemens 7SJ85 33 kV feeder, CT 800/1: IEC SI 660 A TMS 0.1 with a

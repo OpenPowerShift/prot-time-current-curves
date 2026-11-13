@@ -331,9 +331,12 @@ fault is also checked above it, because characteristics converge as the
 multiple rises. If it reports a failure above your fault, that is a
 real finding.
 
-An earth fault states its residual as well as its phase current, and
-its `type` (one of `three_phase`, `two_phase`, `two_phase_earth`,
-`single_phase_earth`):
+`type` is one of `three_phase`, `two_phase`, `two_phase_earth`,
+`single_phase_earth`. Give it whenever the report does; it is what
+lets the tool derive a component the report did not state. A component
+the report *does* state goes on the fault beside `I` -- `I2 = 3.0 kA;`
+for a phase-phase fault graded by a 46, `residual = ...;` for an earth
+fault:
 
 [source,tc]
 ----
@@ -369,6 +372,17 @@ turns ratio, so state the figures at each level:
 
 [source,tc]
 ----
+view SEQ { quantity = I2; voltage = MV; title = "Negative sequence"; }
+
+faults { F_PP { type = two_phase; voltage = MV; I = 5.2 kA; I2 = 3.0 kA; } }
+----
+
+The sheet's `quantity` is what its 46 elements measure (`I2` or
+`3I2`). Across a delta the figures cannot be referred by ratio, so
+state them at each level:
+
+[source,tc]
+----
 scenario LV_2PH_MIN {
     type = two_phase;
     level LV { I = 12.4 kA; I1 = 7.16 kA; I2 = 7.16 kA; }
@@ -394,7 +408,7 @@ times {
 }
 ----
 
-`at_I` says where along the rule to write its caption -- beside the
+`at_I` (optional) says where along the rule to write its caption -- beside the
 curve the requirement bites on. It does not restrict which sheets the
 rule applies to; `views` does that. Requirements at the same time share
 one rule and one caption.
@@ -431,7 +445,8 @@ device F_100T {
 ----
 
 A fuse grades on total-clear time as the primary and on minimum-melt as
-the backup, automatically. It can be named in a `grade` like any relay.
+the backup, automatically. It is named in a `grade` by its id alone:
+`primary = F_100T; backup = R_UP:51;`.
 
 A device takes `name` and `views` like a relay element, and joins a
 chain by being listed in the group: `group AUX { members = [R_AUX, F_11A]; }`.
@@ -493,7 +508,9 @@ grade {
 ----
 
 Use `primary` / `backup` or `below` / `middle` / `above`, never both in
-one block. Only use this when the report asks for a setting to be
+one block. Give the middle relay no `tms` (or the report's, if it has
+one): the solve sets it. All three must operate at the fault -- if one
+cannot, the grade says the middle curve could not be placed. Only use this when the report asks for a setting to be
 chosen; otherwise grade the pairs as the report set them.
 
 [#marks]
@@ -612,8 +629,8 @@ what they mean when they appear.
 | `FAULT_CURRENT_INVALID` | Usually a fault with no `I`: a range and
                             components are given as well as `I`, not instead.
 | `GRADE_NOT_EVALUATED` | The grade has no `margin`, so no verdict.
-| `NO_OPERATION` / `SPACING_UNRESOLVED` | A relay does not pick up at the
-                            fault given -- often a pickup above it.
+| `SPACING_UNRESOLVED` | A below/above relay does not operate at the
+                         fault, so the middle relay cannot be placed.
 | `REFERRAL_NEEDS_CONNECTION` | An unbalanced fault is being carried
                                 across a transformer whose windings do
                                 not settle how. Declare the
@@ -638,15 +655,17 @@ do not adjust settings to make it pass unless you were asked to.
 . `tc-curves check study.ptc` exits `0`, or `3` with a grading failure
   you have reported in words -- and every warning it printed is either
   fixed or reported.
-. `tc-curves report study.ptc` gives each grade a verdict, not
-  "not evaluated".
+. `tc-curves report study.ptc` gives each grade a verdict. Where it
+  says "not evaluated" because the report gives no margin, keep the
+  grade and name the missing margin in your summary.
 . Every number in the study appears in the source report. Nothing was
   inferred to fill a gap.
 . Every relay has `voltage`, and `ct_ratio` where the report gives it
   (it is required for settings in secondary amps; otherwise list it as
   missing rather than invent it).
 . Every transformer the study grades across has its `vector_group`.
-. Every element states `curve` and either `tms` or `t_delay`.
+. Every element states `curve`, and `tms` (inverse) or `t_delay`
+  (definite) -- unless a `solve` or `spacing` sets the `tms`.
 . Every number carries its unit: `A`, `kA`, `ms`, `s`, `kV`, `%`.
 . Every item that belongs to some sheets only says so with `views`.
 . Sequence and earth elements state what they measure.

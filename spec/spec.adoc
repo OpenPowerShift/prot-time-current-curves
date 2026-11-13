@@ -3,7 +3,7 @@
 :toclevels: 4
 :sectnums:
 :sectlinks:
-:version: 0.1.0
+:version: 0.2.0
 :revdate: 2026-07-26
 
 A domain-specific language for capturing protection-relay time-current
@@ -26,9 +26,10 @@ later versions; the spec leaves room for them.
 
 [NOTE]
 ====
-This is **draft 0.1.0**. The language is wide open to changes in this
-phase. Once 0.2.0 ships, the file extension `.ptc` will be frozen for
-that major version.
+This is **0.2.0**. Every form removed or renamed since 0.1.0 is reported
+by name, and where the meaning is exact `tc-curves migrate` (or the
+playground, on load) rewrites it, so a 0.1.0 study comes forward
+without retyping.
 ====
 
 toc::[]

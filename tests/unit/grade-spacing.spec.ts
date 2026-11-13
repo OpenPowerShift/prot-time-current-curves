@@ -74,3 +74,14 @@ describe('a time in meta', () => {
     expect(r.study!.meta.margin).toBeCloseTo(0.3, 9);
   });
 });
+
+describe('a middle curve that cannot be placed', () => {
+  it('leaves the lower pair without a verdict, rather than passing it', () => {
+    /* The incomer's pickup is above the fault: there is no gap. */
+    const r = process(STUDY('below = R_RMU:51P; middle = R_FDR:51P; above = R_INC:51P; fault = F; spacing = 50 %;')
+      .replace('I_pickup = 400 A; tms = 0.5;', 'I_pickup = 2400 A; tms = 0.5;'));
+    expect(r.reports[0].diagnostics.map((d) => d.code)).toContain('SPACING_UNRESOLVED');
+    expect(r.reports[0].unplaced).toBe(true);
+    expect(r.reports[0].pass === true && !r.reports[0].unplaced).toBe(false);
+  });
+});
